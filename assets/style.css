@@ -161,3 +161,14 @@ section[data-testid="stSidebar"] label p { font-size: .82rem; font-weight: 600; 
 
 [data-testid="stToolbar"],
 [data-testid="stHeaderActionElements"] { display: none !important; }
+
+/* Rapatkan jarak atas halaman */
+[data-testid="stMainBlockContainer"],
+.block-container {
+  padding-top: 1rem !important;
+}
+header[data-testid="stHeader"] { height: 2.5rem; }
+
+/* Rapatkan jarak atas sidebar (logo -> Filter data) */
+[data-testid="stSidebarHeader"] { padding-bottom: 0 !important; margin-bottom: 0 !important; }
+[data-testid="stSidebarUserContent"] { padding-top: 0 !important; }
