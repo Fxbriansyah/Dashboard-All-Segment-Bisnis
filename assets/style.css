@@ -158,3 +158,6 @@ section[data-testid="stSidebar"] label p { font-size: .82rem; font-weight: 600; 
 .side-result span { font-size: .74rem; font-weight: 600; color: var(--muted); }
 .side-result b { font-size: 1.3rem; font-weight: 800; color: var(--brand); font-variant-numeric: tabular-nums; }
 .side-result small { font-size: .74rem; color: var(--muted); }
+
+[data-testid="stToolbar"],
+[data-testid="stHeaderActionElements"] { display: none !important; }
