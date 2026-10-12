@@ -50,7 +50,7 @@ def page_upload():
 
 def _upload_excel():
     with st.container(border=True):
-        uploaded = st.file_uploader("Pilih file Excel (.xlsx / .xls)", type=["xlsx", "xls"],
+        uploaded = st.file_uploader("Pilih file Excel (.xlsx / .xls / .xlsm)", type=["xlsx", "xls", "xlsm"],
                                     help="Data hanya diproses untuk sesi ini dan tidak disimpan di source code.")
         st.markdown("**Kolom wajib di file:**")
         st.code(", ".join(REQUIRED_COLUMNS), language=None)
