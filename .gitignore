@@ -1,0 +1,11 @@
+.env
+_env
+.venv/
+__pycache__/
+*.pyc
+.vscode/
+.streamlit/secrets.toml
+*.xlsx
+*.xlsm
+settings.json
+load_to_postgres.py
