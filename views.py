@@ -290,15 +290,15 @@ def page_dashboard():
         with c1:
             st.subheader("Pencairan per tahun (plafond)")
             with st.container(border=True, height=CHART_BOX):
-                yr = (df.dropna(subset=["TAHUN PENCAIRAN"]).groupby("TAHUN PENCAIRAN", as_index=False)["PLAFOND"].sum()
-                      .sort_values("TAHUN PENCAIRAN"))
-                yr["TAHUN PENCAIRAN"] = yr["TAHUN PENCAIRAN"].astype(int)
-                fig = px.bar(yr, x="TAHUN PENCAIRAN", y="PLAFOND")
-                fig.update_traces(marker_color=BRAND, hovertemplate="%{x}<br>Rp %{y:,.0f}<extra></extra>")
-                fig.update_layout(bargap=0.25)
-                fig.update_xaxes(dtick=max(1, -(-len(yr) // 6)), tickformat="d", tickangle=0)   # maks. ~6 label tahun
-                ui.rupiah_axis(fig, yr["PLAFOND"].max())
-                ui.show_fig(ui.style_fig(fig, CHART_BOX - 48))
+                yr = (df.dropna(subset=["TAHUN PENCAIRAN"]).groupby("TAHUN PENCAIRAN")["PLAFOND"].sum()
+                      .sort_index(ascending=False))   # tahun terbaru di atas
+                top = yr.max() or 1
+                rows = "".join(
+                    f'<div><div class="hbar-top"><span>{int(n)}</span><b>{D.fmt_money(val)}</b></div>'
+                    f'<div class="hbar-track"><div style="width:{max(val / top * 100, 1.5):.1f}%;'
+                    f'background:{BRAND}"></div></div></div>'
+                    for n, val in yr.items())
+                st.markdown(f'<div class="hbars">{rows}</div>', unsafe_allow_html=True)
         with c2:
             st.subheader("Outstanding per segmen")
             with st.container(border=True, height=CHART_BOX):
