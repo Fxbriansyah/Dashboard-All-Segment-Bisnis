@@ -291,42 +291,21 @@ def page_dashboard():
             st.subheader("Pencairan 5 tahun terakhir per segmen (plafond)")
             with st.container(border=True, height=CHART_BOX):
                 d = df.dropna(subset=["TAHUN PENCAIRAN"])
-                yr_all = d.groupby("TAHUN PENCAIRAN")["PLAFOND"].sum().sort_index()
-                yr = yr_all.tail(5).sort_index(ascending=False)   # 5 tahun terakhir, terbaru di atas
-                top = yr.max() or 1
-                seg_year = d.groupby(["TAHUN PENCAIRAN", "PRODUCT_OWNER"])["PLAFOND"].sum()
-                segs_here = [s for s in SEGMENT_ORDER if s in set(d["PRODUCT_OWNER"])]
-                segs_here += [s for s in d["PRODUCT_OWNER"].unique() if s not in segs_here]
-                color_of = lambda s: SEGMENT_THEME.get(s, DEFAULT_THEME)["color"]
-
-                def _growth(year, val):
-                    """Pertumbuhan vs tahun sebelumnya (dihitung dari seluruh data, bukan hanya 5 tahun)."""
-                    prev = yr_all.get(year - 1)
-                    if not prev:
-                        return ""
-                    g = (val - prev) / prev * 100
-                    color = "#059669" if g >= 0 else "#dc2626"
-                    return (f' <small style="color:{color};font-weight:600">'
-                            f'{"+" if g >= 0 else "-"}{D.fmt_pct(abs(g))}</small>')
-
-                def _stack(year, total):
-                    parts = "".join(
-                        f'<div title="{html.escape(s)}: {D.fmt_money(v)}" style="width:{v / total * 100:.2f}%;'
-                        f'height:100%;background:{color_of(s)}"></div>'
-                        for s in segs_here if (v := seg_year.get((year, s), 0)) > 0)
-                    return (f'<div style="display:flex;width:{max(total / top * 100, 1.5):.1f}%;height:100%">'
-                            f'{parts}</div>')
-
-                legend = "".join(
-                    f'<span style="white-space:nowrap"><span style="color:{color_of(s)}">&#9632;</span> '
-                    f'{html.escape(s)}</span>' for s in segs_here)
-                st.markdown(f'<div style="display:flex;flex-wrap:wrap;gap:4px 12px;font-size:11px;'
-                            f'margin-bottom:4px">{legend}</div>', unsafe_allow_html=True)
-                rows = "".join(
-                    f'<div><div class="hbar-top"><span>{int(n)}{_growth(n, val)}</span><b>{D.fmt_money(val)}</b></div>'
-                    f'<div class="hbar-track">{_stack(n, val)}</div></div>'
-                    for n, val in yr.items())
-                st.markdown(f'<div class="hbars">{rows}</div>', unsafe_allow_html=True)
+                last = sorted(d["TAHUN PENCAIRAN"].unique())[-5:]   # 5 tahun terakhir
+                d = d[d["TAHUN PENCAIRAN"].isin(last)]
+                ys = d.groupby(["TAHUN PENCAIRAN", "PRODUCT_OWNER"], as_index=False)["PLAFOND"].sum()
+                ys["TAHUN"] = ys["TAHUN PENCAIRAN"].astype(int).astype(str)
+                segs_here = [s for s in SEGMENT_ORDER if s in set(ys["PRODUCT_OWNER"])]
+                segs_here += [s for s in ys["PRODUCT_OWNER"].unique() if s not in segs_here]
+                fig = px.bar(ys, x="TAHUN", y="PLAFOND", color="PRODUCT_OWNER",
+                             category_orders={"PRODUCT_OWNER": segs_here,
+                                              "TAHUN": [str(int(y)) for y in last]},
+                             color_discrete_map={s: SEGMENT_THEME.get(s, DEFAULT_THEME)["color"] for s in segs_here})
+                fig.update_traces(hovertemplate="%{x} - %{fullData.name}<br>Rp %{y:,.0f}<extra></extra>")
+                fig.update_layout(bargap=0.3, barmode="stack")
+                fig.update_xaxes(type="category")
+                ui.rupiah_axis(fig, ys.groupby("TAHUN")["PLAFOND"].sum().max())
+                ui.show_fig(ui.style_fig(fig, CHART_BOX - 48, legend_bottom=True))
         with c2:
             st.subheader("Outstanding per segmen")
             with st.container(border=True, height=CHART_BOX):
