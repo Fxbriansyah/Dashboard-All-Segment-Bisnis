@@ -288,24 +288,19 @@ def page_dashboard():
     with st.container(key="charts"):
         c1, c2, c3 = st.columns(3)
         with c1:
-            st.subheader("Pencairan 5 tahun terakhir per segmen (plafond)")
+            st.subheader("Plafond per segmen")
             with st.container(border=True, height=CHART_BOX):
-                d = df.dropna(subset=["TAHUN PENCAIRAN"])
-                last = sorted(d["TAHUN PENCAIRAN"].unique())[-5:]   # 5 tahun terakhir
-                d = d[d["TAHUN PENCAIRAN"].isin(last)]
-                ys = d.groupby(["TAHUN PENCAIRAN", "PRODUCT_OWNER"], as_index=False)["PLAFOND"].sum()
-                ys["TAHUN"] = ys["TAHUN PENCAIRAN"].astype(int).astype(str)
-                segs_here = [s for s in SEGMENT_ORDER if s in set(ys["PRODUCT_OWNER"])]
-                segs_here += [s for s in ys["PRODUCT_OWNER"].unique() if s not in segs_here]
-                fig = px.bar(ys, x="TAHUN", y="PLAFOND", color="PRODUCT_OWNER",
-                             category_orders={"PRODUCT_OWNER": segs_here,
-                                              "TAHUN": [str(int(y)) for y in last]},
-                             color_discrete_map={s: SEGMENT_THEME.get(s, DEFAULT_THEME)["color"] for s in segs_here})
-                fig.update_traces(hovertemplate="%{x} - %{fullData.name}<br>Rp %{y:,.0f}<extra></extra>")
-                fig.update_layout(bargap=0.3, barmode="stack")
-                fig.update_xaxes(type="category")
-                ui.rupiah_axis(fig, ys.groupby("TAHUN")["PLAFOND"].sum().max())
-                ui.show_fig(ui.style_fig(fig, CHART_BOX - 48, legend_bottom=True))
+                pf = (df.groupby("PRODUCT_OWNER", as_index=False)["PLAFOND"].sum()
+                      .sort_values("PLAFOND", ascending=False))
+                fig = px.bar(pf, x="PRODUCT_OWNER", y="PLAFOND", color="PRODUCT_OWNER",
+                             color_discrete_map={s: SEGMENT_THEME.get(s, DEFAULT_THEME)["color"]
+                                                 for s in pf["PRODUCT_OWNER"]})
+                fig.update_traces(hovertemplate="%{x}<br>Rp %{y:,.0f}<extra></extra>")
+                fig.update_layout(bargap=0.35, showlegend=False)
+                fig.update_xaxes(tickvals=list(pf["PRODUCT_OWNER"]),
+                                 ticktext=[str(n).replace(" ", "<br>") for n in pf["PRODUCT_OWNER"]], tickangle=0)
+                ui.rupiah_axis(fig, pf["PLAFOND"].max())
+                ui.show_fig(ui.style_fig(fig, CHART_BOX - 48))
         with c2:
             st.subheader("Outstanding per segmen")
             with st.container(border=True, height=CHART_BOX):
