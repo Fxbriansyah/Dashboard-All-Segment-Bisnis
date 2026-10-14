@@ -1,6 +1,6 @@
 """Halaman-halaman dashboard: Upload -> Proses -> Ringkasan -> Dashboard."""
 import hashlib
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 import plotly.express as px
@@ -14,6 +14,18 @@ import ui
 
 from config import (BRAND, BRAND_LIGHT, BUNGA_COLUMN, DB_CONFIG, DEFAULT_THEME, PRODUCT_COLORS,
                     REQUIRED_COLUMNS, SAFE_DETAIL_COLUMNS, SEGMENT_ORDER, SEGMENT_THEME)
+
+try:   # zona waktu WIB; butuh paket `tzdata` di Windows
+    from zoneinfo import ZoneInfo
+    WIB = ZoneInfo("Asia/Jakarta")
+except Exception:  # noqa: BLE001
+    WIB = timezone(timedelta(hours=7))
+
+
+def now_wib():
+    """Waktu sekarang di WIB, terlepas dari zona waktu server."""
+    return datetime.now(WIB)
+
 
 SESSION_KEYS = ["stage", "data", "file_hash", "file_name", "processed_at"]
 FILTER_KEYS = ["f_year", "f_month", "f_status"]
@@ -33,7 +45,7 @@ def reset_all():
 
 
 def _store(df, name, digest=None):
-    st.session_state.update(data=df, file_name=name, file_hash=digest, processed_at=datetime.now())
+    st.session_state.update(data=df, file_name=name, file_hash=digest, processed_at=now_wib())
 
 
 # ======================= 1. UPLOAD =======================
