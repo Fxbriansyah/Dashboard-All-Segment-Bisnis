@@ -326,10 +326,29 @@ def page_dashboard():
                 st.markdown(_legend_html(cmap, tall=True), unsafe_allow_html=True)
 
     st.subheader("Plafond vs outstanding per segmen")
-    long = df.groupby("PRODUCT_OWNER", as_index=False)[["PLAFOND", "OUTSTANDING"]].sum().melt("PRODUCT_OWNER", var_name="Metrik", value_name="Nilai")
-    fig = px.bar(long, x="PRODUCT_OWNER", y="Nilai", color="Metrik", barmode="group",
-                 color_discrete_map={"PLAFOND": BRAND, "OUTSTANDING": BRAND_LIGHT})
-    ui.show_fig(ui.style_fig(fig, legend_bottom=False).update_layout(legend=dict(orientation="h", y=1.1, x=0, title_text="")))
+    pv = (df.groupby("PRODUCT_OWNER")[["PLAFOND", "OUTSTANDING"]].sum()
+          .sort_values("PLAFOND", ascending=False))
+    top = pv.to_numpy().max() or 1   # skala bersama, jadi antar segmen bisa dibandingkan
+
+    def _bar(label, val, color):
+        return (f'<div class="hbar-top"><span>{label}</span><b>{D.fmt_money(val)}</b></div>'
+                f'<div class="hbar-track"><div style="width:{max(val / top * 100, 1.5):.1f}%;'
+                f'background:{color}"></div></div>')
+
+    with st.container(border=True):
+        st.markdown(
+            f'<div style="display:flex;gap:16px;font-size:12px;margin-bottom:6px">'
+            f'<span><span style="color:{BRAND}">&#9632;</span> Plafond</span>'
+            f'<span><span style="color:{BRAND_LIGHT}">&#9632;</span> Outstanding</span></div>',
+            unsafe_allow_html=True)
+        for i in range(0, len(pv), 4):
+            chunk = list(pv.iloc[i:i + 4].iterrows())
+            for col, (name, r) in zip(st.columns(len(chunk)), chunk):
+                col.markdown(
+                    f'<div class="hbars"><b>{html.escape(str(name))}</b>'
+                    f'<div>{_bar("Plafond", r["PLAFOND"], BRAND)}</div>'
+                    f'<div>{_bar("Outstanding", r["OUTSTANDING"], BRAND_LIGHT)}</div></div>',
+                    unsafe_allow_html=True)
 
     st.divider()
     st.subheader("Detail data (hasil filter)")
