@@ -288,17 +288,28 @@ def page_dashboard():
     with st.container(key="charts"):
         c1, c2, c3 = st.columns(3)
         with c1:
-            st.subheader("Pencairan per tahun (plafond)")
+            st.subheader("Pencairan 5 tahun terakhir (plafond)")
             with st.container(border=True, height=CHART_BOX):
-                yr = (df.dropna(subset=["TAHUN PENCAIRAN"]).groupby("TAHUN PENCAIRAN", as_index=False)["PLAFOND"].sum()
-                      .sort_values("TAHUN PENCAIRAN"))
-                yr["TAHUN PENCAIRAN"] = yr["TAHUN PENCAIRAN"].astype(int)
-                fig = px.bar(yr, x="TAHUN PENCAIRAN", y="PLAFOND")
-                fig.update_traces(marker_color=BRAND, hovertemplate="%{x}<br>Rp %{y:,.0f}<extra></extra>")
-                fig.update_layout(bargap=0.25)
-                fig.update_xaxes(dtick=max(1, -(-len(yr) // 6)), tickformat="d", tickangle=0)   # maks. ~6 label tahun
-                ui.rupiah_axis(fig, yr["PLAFOND"].max())
-                ui.show_fig(ui.style_fig(fig, CHART_BOX - 48))
+                yr_all = df.dropna(subset=["TAHUN PENCAIRAN"]).groupby("TAHUN PENCAIRAN")["PLAFOND"].sum().sort_index()
+                yr = yr_all.tail(5).sort_index(ascending=False)   # 5 tahun terakhir, terbaru di atas
+                top = yr.max() or 1
+
+                def _growth(year, val):
+                    """Pertumbuhan vs tahun sebelumnya (dihitung dari seluruh data, bukan hanya 5 tahun)."""
+                    prev = yr_all.get(year - 1)
+                    if not prev:
+                        return ""
+                    g = (val - prev) / prev * 100
+                    color = "#059669" if g >= 0 else "#dc2626"
+                    return (f' <small style="color:{color};font-weight:600">'
+                            f'{"+" if g >= 0 else "-"}{D.fmt_pct(abs(g))}</small>')
+
+                rows = "".join(
+                    f'<div><div class="hbar-top"><span>{int(n)}{_growth(n, val)}</span><b>{D.fmt_money(val)}</b></div>'
+                    f'<div class="hbar-track"><div style="width:{max(val / top * 100, 1.5):.1f}%;'
+                    f'background:{BRAND}"></div></div></div>'
+                    for n, val in yr.items())
+                st.markdown(f'<div class="hbars">{rows}</div>', unsafe_allow_html=True)
         with c2:
             st.subheader("Outstanding per segmen")
             with st.container(border=True, height=CHART_BOX):
@@ -326,10 +337,29 @@ def page_dashboard():
                 st.markdown(_legend_html(cmap, tall=True), unsafe_allow_html=True)
 
     st.subheader("Plafond vs outstanding per segmen")
-    long = df.groupby("PRODUCT_OWNER", as_index=False)[["PLAFOND", "OUTSTANDING"]].sum().melt("PRODUCT_OWNER", var_name="Metrik", value_name="Nilai")
-    fig = px.bar(long, x="PRODUCT_OWNER", y="Nilai", color="Metrik", barmode="group",
-                 color_discrete_map={"PLAFOND": BRAND, "OUTSTANDING": BRAND_LIGHT})
-    ui.show_fig(ui.style_fig(fig, legend_bottom=False).update_layout(legend=dict(orientation="h", y=1.1, x=0, title_text="")))
+    pv = (df.groupby("PRODUCT_OWNER")[["PLAFOND", "OUTSTANDING"]].sum()
+          .sort_values("PLAFOND", ascending=False))
+    top = pv.to_numpy().max() or 1   # skala bersama, jadi antar segmen bisa dibandingkan
+
+    def _bar(label, val, color):
+        return (f'<div class="hbar-top"><span>{label}</span><b>{D.fmt_money(val)}</b></div>'
+                f'<div class="hbar-track"><div style="width:{max(val / top * 100, 1.5):.1f}%;'
+                f'background:{color}"></div></div>')
+
+    with st.container(border=True):
+        st.markdown(
+            f'<div style="display:flex;gap:16px;font-size:12px;margin-bottom:6px">'
+            f'<span><span style="color:{BRAND}">&#9632;</span> Plafond</span>'
+            f'<span><span style="color:{BRAND_LIGHT}">&#9632;</span> Outstanding</span></div>',
+            unsafe_allow_html=True)
+        for i in range(0, len(pv), 4):
+            chunk = list(pv.iloc[i:i + 4].iterrows())
+            for col, (name, r) in zip(st.columns(len(chunk)), chunk):
+                col.markdown(
+                    f'<div class="hbars"><b>{html.escape(str(name))}</b>'
+                    f'<div>{_bar("Plafond", r["PLAFOND"], BRAND)}</div>'
+                    f'<div>{_bar("Outstanding", r["OUTSTANDING"], BRAND_LIGHT)}</div></div>',
+                    unsafe_allow_html=True)
 
     st.divider()
     st.subheader("Detail data (hasil filter)")
