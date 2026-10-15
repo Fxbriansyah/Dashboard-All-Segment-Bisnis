@@ -30,6 +30,7 @@ def now_wib():
 SESSION_KEYS = ["stage", "data", "file_hash", "file_name", "processed_at"]
 FILTER_KEYS = ["f_year", "f_month", "f_status"]
 CHART_BOX = 400   # tinggi kotak chart di baris tiga chart (px)
+LEGEND_TALL = 130   # tinggi kotak legenda produk di chart donut (px); sisanya bisa di-scroll
 
 
 def go_to(stage):
@@ -189,7 +190,8 @@ def _legend_html(cmap, tall=False):
     """Legenda nama produk: 2 kolom, tinggi tetap (2 baris; tall=4 baris), sisanya bisa di-scroll."""
     items = "".join(f'<span title="{html.escape(n)}"><i style="background:{c}"></i>{html.escape(n)}</span>'
                     for n, c in cmap.items())
-    return f'<div class="legend{" tall" if tall else ""}">{items}</div>'
+    style = f' style="height:{LEGEND_TALL}px;max-height:{LEGEND_TALL}px;overflow-y:auto"' if tall else ""
+    return f'<div class="legend{" tall" if tall else ""}"{style}>{items}</div>'
 
 def segment_card(df, segment):
     th = SEGMENT_THEME.get(segment, DEFAULT_THEME)
@@ -325,7 +327,7 @@ def page_dashboard():
                              color="GROUP_PRODUCT", color_discrete_map=cmap)
                 fig.update_traces(textinfo="none")
                 fig.update_layout(showlegend=False)
-                fig = ui.style_fig(fig, CHART_BOX - 190)
+                fig = ui.style_fig(fig, CHART_BOX - 205)
                 fig.update_layout(margin=dict(l=10, r=10, t=12, b=12))
                 ui.show_fig(fig)
                 st.markdown(_legend_html(cmap, tall=True), unsafe_allow_html=True)
