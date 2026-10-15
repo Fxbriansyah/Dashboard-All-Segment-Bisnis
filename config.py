@@ -7,20 +7,17 @@ import plotly.express as px
 BASE_DIR = Path(__file__).parent
 CSS_PATH = BASE_DIR / "assets" / "style.css"
 
-# Nama kolom NPL (nominal) di dashboard & Excel (cukup diubah di sini).
-NPL_COLUMN = "NPL"
-
 # Kolom WAJIB di file Excel.
 REQUIRED_COLUMNS = [
     "PRODUCT_OWNER", "GROUP_PRODUCT", "PLAN_CODE", "JENIS_FASILITAS",
-    "PLAFOND", "OUTSTANDING", "STATUS_LOAN", NPL_COLUMN,
+    "PLAFOND", "OUTSTANDING", "STATUS_LOAN",
     "TAHUN PENCAIRAN", "BULAN_PENCAIRAN", "TANGGAL_PENCAIRAN",
 ]
 # Kolom di tabel detail (kolom identitas nasabah sengaja tidak ditampilkan).
 SAFE_DETAIL_COLUMNS = [
     "PRODUCT_OWNER", "GROUP_PRODUCT", "PLAN_CODE", "JENIS_FASILITAS",
     "TAHUN PENCAIRAN", "BULAN_PENCAIRAN", "TANGGAL_PENCAIRAN",
-    "PLAFOND", "OUTSTANDING", NPL_COLUMN, "STATUS_LOAN", "BRANCH_CODE",
+    "PLAFOND", "OUTSTANDING", "STATUS_LOAN", "BRANCH_CODE",
 ]
 TEXT_COLUMNS = ["PRODUCT_OWNER", "GROUP_PRODUCT", "PLAN_CODE", "JENIS_FASILITAS", "STATUS_LOAN", "BRANCH_CODE"]
 
@@ -64,5 +61,5 @@ DB_COLUMN_TO_APP = {
     "jenis_fasilitas": "JENIS_FASILITAS", "plafond": "PLAFOND", "outstanding": "OUTSTANDING",
     "status_loan": "STATUS_LOAN", "tahun_pencairan": "TAHUN PENCAIRAN",
     "bulan_pencairan": "BULAN_PENCAIRAN", "tanggal_pencairan": "TANGGAL_PENCAIRAN",
-    "branch_code": "BRANCH_CODE", "npl": NPL_COLUMN,
+    "branch_code": "BRANCH_CODE",
 }
