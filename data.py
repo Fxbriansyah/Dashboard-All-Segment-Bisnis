@@ -1,5 +1,6 @@
 """Format angka, pembersihan data Excel, dan akses database (opsional)."""
 import io
+import re
 
 import pandas as pd
 import streamlit as st
@@ -87,9 +88,51 @@ def prepare_data(raw):
     return df
 
 
+def _key(name):
+    """Kunci pembanding nama kolom: abaikan huruf besar/kecil, spasi, underscore, dan spasi tak terlihat."""
+    return re.sub(r"[\s_]+", "", str(name)).upper()
+
+
+_CANON = {_key(c): c for c in REQUIRED_COLUMNS + ["BRANCH_CODE"]}
+
+
+def _normalize_columns(df):
+    """'plafond ', 'Tahun_Pencairan', 'TAHUN  PENCAIRAN' -> nama kolom resmi di config."""
+    df = df.copy()
+    df.columns = [_CANON.get(_key(c), str(c).strip()) for c in df.columns]
+    return df
+
+
+def _find_table(file_bytes):
+    """Cari tabel data di semua sheet; header boleh tidak di baris pertama (dicek 20 baris awal)."""
+    need = {_key(c) for c in REQUIRED_COLUMNS}
+    best, best_hit = None, -1
+    for sheet in pd.read_excel(io.BytesIO(file_bytes), sheet_name=None, header=None).values():
+        for i in range(min(20, len(sheet))):
+            hit = len(need & {_key(v) for v in sheet.iloc[i].dropna()})
+            if hit > best_hit:
+                best_hit, best = hit, (sheet, i)
+            if hit == len(need):
+                break
+        if best_hit == len(need):
+            break
+    if best is None:
+        return pd.DataFrame()
+    sheet, i = best
+    df = sheet.iloc[i + 1:].reset_index(drop=True)
+    df.columns = list(sheet.iloc[i])
+    return df.dropna(axis=1, how="all").dropna(how="all").infer_objects()
+
+
 @st.cache_data(show_spinner=False)
 def read_excel_bytes(file_bytes):
-    return pd.read_excel(io.BytesIO(file_bytes))
+    """Baca sheet pertama dulu (kasus umum). Kalau kolom wajib tidak lengkap, cari di semua sheet/baris header."""
+    df = _normalize_columns(pd.read_excel(io.BytesIO(file_bytes)))
+    if not validate_columns(df):
+        return df
+    found = _normalize_columns(_find_table(file_bytes))
+    # pakai hasil pencarian hanya kalau lebih lengkap; kalau tidak, laporan 'kolom hilang' tetap dari sheet pertama
+    return found if len(validate_columns(found)) < len(validate_columns(df)) else df
 
 
 # ---------- Database (opsional, import dilazy agar app tetap jalan tanpa driver DB) ----------
