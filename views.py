@@ -12,7 +12,7 @@ import html
 import data as D
 import ui
 
-from config import (BRAND, BRAND_LIGHT, BUNGA_COLUMN, DB_CONFIG, DEFAULT_THEME, PRODUCT_COLORS,
+from config import (BRAND, BRAND_LIGHT, NPL_COLUMN, DB_CONFIG, DEFAULT_THEME, PRODUCT_COLORS,
                     REQUIRED_COLUMNS, SAFE_DETAIL_COLUMNS, SEGMENT_ORDER, SEGMENT_THEME)
 
 try:   # zona waktu WIB; butuh paket `tzdata` di Windows
@@ -174,17 +174,17 @@ def page_summary():
 
 # ======================= 4. DASHBOARD =======================
 def _product_list_html(s, color):
-    """Daftar per group produk: NoA, plafond, dan pendapatan bunga (diurutkan dari plafond terbesar)."""
+    """Daftar per group produk: NoA, plafond, dan NPL (diurutkan dari plafond terbesar)."""
     agg = {"noa": ("PLAFOND", "size"), "plafond": ("PLAFOND", "sum")}
-    if BUNGA_COLUMN in s.columns:
-        agg["bunga"] = (BUNGA_COLUMN, "sum")
+    if NPL_COLUMN in s.columns:
+        agg["npl"] = (NPL_COLUMN, "sum")
     g = s.groupby("GROUP_PRODUCT").agg(**agg).sort_values("plafond", ascending=False)
     rows = "".join(
         f'<div class="prod"><div class="prod-top"><b>{html.escape(str(name))}</b>'
         f'<span>NoA {D.fmt_num(r["noa"])}</span></div>'
         f'<div class="prod-row"><span>Plafond</span><b>{D.fmt_money(r["plafond"])}</b></div>'
-        f'<div class="prod-row"><span>Pend_Bunga</span>'
-        f'<b>{D.fmt_money(r["bunga"]) if "bunga" in g.columns else "-"}</b></div></div>'
+        f'<div class="prod-row"><span>NPL</span>'
+        f'<b>{D.fmt_money(r["npl"]) if "npl" in g.columns else "-"}</b></div></div>'
         for name, r in g.iterrows())
     return (f'<div class="seg-sub" style="--seg-color:{color}">Rincian per produk ({len(g)})</div>'
             f'<div class="prod-list">{rows}</div>')
@@ -199,7 +199,7 @@ def segment_card(df, segment):
     th = SEGMENT_THEME.get(segment, DEFAULT_THEME)
     s = df[df["PRODUCT_OWNER"] == segment]
     plafond = s["PLAFOND"].sum()
-    bunga = D.fmt_money(s[BUNGA_COLUMN].sum()) if BUNGA_COLUMN in s.columns else "-"
+    npl = D.fmt_money(s[NPL_COLUMN].sum()) if NPL_COLUMN in s.columns else "-"
     with st.container(border=True):
         st.markdown(
             f'<div class="seg-head" style="--seg-bg:{th["bg"]};--seg-border:{th["border"]};--seg-color:{th["color"]}">'
@@ -208,7 +208,7 @@ def segment_card(df, segment):
             f'<div><span>NoA</span><b>{D.fmt_num(len(s))}</b></div>'
             f'<div><span>Produk</span><b>{D.fmt_num(s["GROUP_PRODUCT"].nunique())}</b></div>'
             f'<div class="wide"><span>Plafond</span><b>{D.fmt_money(plafond)}</b></div>'
-            f'<div class="wide"><span>Total pendapatan bunga</span><b>{bunga}</b></div></div>'
+            f'<div class="wide"><span>Total NPL</span><b>{npl}</b></div></div>'
             + _product_list_html(s, th["color"])
             + f'<div class="seg-sub" style="--seg-color:{th["color"]}">Komposisi group produk</div>',
             unsafe_allow_html=True)
@@ -264,8 +264,8 @@ def page_dashboard():
     if df0 is None:
         go_to("upload")
     _sidebar(df0)
-    if BUNGA_COLUMN not in df0.columns:
-        st.warning(f"Kolom {BUNGA_COLUMN} tidak ada di data. Untuk database: pastikan kolomnya ada di tabel "
+    if NPL_COLUMN not in df0.columns:
+        st.warning(f"Kolom {NPL_COLUMN} tidak ada di data. Untuk database: pastikan kolomnya ada di tabel "
                    "dan terdaftar di DB_COLUMN_TO_APP (config.py), lalu muat ulang data lewat load_to_postgres.py.")
     df = _apply_filters(df0)
 
@@ -377,7 +377,7 @@ def page_dashboard():
             "BULAN_PENCAIRAN": st.column_config.NumberColumn("BULAN_PENCAIRAN", format="%d"),
             "PLAFOND": st.column_config.NumberColumn("PLAFOND", format="localized"),
             "OUTSTANDING": st.column_config.NumberColumn("OUTSTANDING", format="localized"),
-            BUNGA_COLUMN: st.column_config.NumberColumn(BUNGA_COLUMN, format="localized"),
+            NPL_COLUMN: st.column_config.NumberColumn(NPL_COLUMN, format="localized"),
         })
     st.download_button("Download hasil filter (CSV)", detail.to_csv(index=False).encode("utf-8-sig"),
                        file_name="hasil_filter_dashboard.csv", mime="text/csv")

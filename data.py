@@ -5,7 +5,7 @@ import re
 import pandas as pd
 import streamlit as st
 
-from config import (BULAN_LABEL, BULAN_TEXT_TO_NUM, BUNGA_COLUMN, DB_COLUMN_TO_APP, DB_CONFIG,
+from config import (BULAN_LABEL, BULAN_TEXT_TO_NUM, NPL_COLUMN, DB_COLUMN_TO_APP, DB_CONFIG,
                     REQUIRED_COLUMNS, STATUS_LOAN_LABEL, TEXT_COLUMNS)
 
 
@@ -56,7 +56,7 @@ def prepare_data(raw):
     df = raw.copy()
     df.columns = [str(c).strip() for c in df.columns]
 
-    for c in ("PLAFOND", "OUTSTANDING", BUNGA_COLUMN):
+    for c in ("PLAFOND", "OUTSTANDING", NPL_COLUMN):
         if c in df.columns:
             df[c] = pd.to_numeric(df[c], errors="coerce").fillna(0)
     df["TAHUN PENCAIRAN"] = pd.to_numeric(df["TAHUN PENCAIRAN"], errors="coerce")
