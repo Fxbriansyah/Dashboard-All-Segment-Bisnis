@@ -53,6 +53,14 @@ def short_rp(x):
     return f"{x:g}".replace(".", ",")
 
 
+def compact_rp(x):
+    """Label ringkas satu desimal: 92729400677204 -> '92,7 T', 647267072927 -> '647,3 M'."""
+    for div, unit in ((1e12, "T"), (1e9, "M"), (1e6, "Jt")):
+        if abs(x) >= div:
+            return f"{x / div:,.1f} {unit}".replace(",", "_").replace(".", ",").replace("_", ".")
+    return f"{x:,.0f}".replace(",", ".")
+
+
 def rupiah_axis(fig, max_value, n=4):
     """Sumbu Y dengan angka 'bulat' dan satuan Indonesia (Jt / M / T)."""
     if not max_value or max_value <= 0:
