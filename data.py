@@ -5,7 +5,8 @@ import re
 import pandas as pd
 import streamlit as st
 
-from config import (BULAN_LABEL, BULAN_TEXT_TO_NUM, DB_COLUMN_TO_APP, DB_CONFIG,
+from config import (BULAN_LABEL, BULAN_TEXT_TO_NUM, DB_COLUMN_TO_APP, DB_CONFIG, KOL_ALIASES, KOL_COLUMN,
+                    NPL_MAX_KOL, NPL_MIN_KOL,
                     REQUIRED_COLUMNS, STATUS_LOAN_LABEL, TEXT_COLUMNS)
 
 
@@ -45,6 +46,19 @@ def fmt_tahun(y):
         return str(y)
 
 
+def npl_pct(df):
+    """NPL % = outstanding kolektabilitas 3-5 / total outstanding * 100. None kalau kolom kolektabilitas tidak ada."""
+    if "IS_NPL" not in df.columns:
+        return None
+    total = df["OUTSTANDING"].sum()
+    return df.loc[df["IS_NPL"], "OUTSTANDING"].sum() / total * 100 if total else 0.0
+
+
+def fmt_npl(df):
+    p = npl_pct(df)
+    return "-" if p is None else fmt_pct(p)
+
+
 # ---------- Pipeline Excel ----------
 def validate_columns(df):
     """Kembalikan daftar kolom wajib yang belum ada."""
@@ -80,6 +94,11 @@ def prepare_data(raw):
         parsed = parsed.fillna(pd.to_datetime(tgl.where(num.isna()), errors="coerce"))
     df["TANGGAL_PENCAIRAN"] = parsed.where(parsed >= "1980-01-01")  # tanggal tak masuk akal -> kosong
 
+    # Flag NPL dari kolektabilitas (angka 3-5; "3", "3.0", "Kol 3" semuanya terbaca).
+    if KOL_COLUMN in df.columns:
+        kol = pd.to_numeric(df[KOL_COLUMN].astype(str).str.extract(r"(\d+)")[0], errors="coerce")
+        df["IS_NPL"] = kol.between(NPL_MIN_KOL, NPL_MAX_KOL)
+
     # Kode seperti 1 bisa terbaca "1.0" kalau kolomnya ada sel kosong -> dirapikan jadi "1".
     for c in TEXT_COLUMNS:
         if c in df.columns:
@@ -94,6 +113,7 @@ def _key(name):
 
 
 _CANON = {_key(c): c for c in REQUIRED_COLUMNS + ["BRANCH_CODE"]}
+_CANON.update({_key(a): KOL_COLUMN for a in KOL_ALIASES})
 
 
 def _normalize_columns(df):

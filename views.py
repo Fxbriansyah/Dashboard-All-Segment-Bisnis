@@ -12,7 +12,7 @@ import html
 import data as D
 import ui
 
-from config import (BRAND, BRAND_LIGHT, DB_CONFIG, DEFAULT_THEME, PRODUCT_COLORS,
+from config import (BRAND, BRAND_LIGHT, DB_CONFIG, DEFAULT_THEME, KOL_COLUMN, PRODUCT_COLORS,
                     REQUIRED_COLUMNS, SAFE_DETAIL_COLUMNS, SEGMENT_ORDER, SEGMENT_THEME)
 
 try:   # zona waktu WIB; butuh paket `tzdata` di Windows
@@ -204,7 +204,8 @@ def segment_card(df, segment):
             f'<div class="seg-stats">'
             f'<div><span>NoA</span><b>{D.fmt_num(len(s))}</b></div>'
             f'<div><span>Produk</span><b>{D.fmt_num(s["GROUP_PRODUCT"].nunique())}</b></div>'
-            f'<div class="wide"><span>Plafond</span><b>{D.fmt_money(plafond)}</b></div></div>'
+            f'<div class="wide"><span>Plafond</span><b>{D.fmt_money(plafond)}</b></div>'
+            f'<div class="wide"><span>NPL (kol 3-5)</span><b>{D.fmt_npl(s)}</b></div></div>'
             + _product_list_html(s, th["color"])
             + f'<div class="seg-sub" style="--seg-color:{th["color"]}">Komposisi group produk</div>',
             unsafe_allow_html=True)
@@ -276,7 +277,10 @@ def page_dashboard():
     plafond, outstanding = df["PLAFOND"].sum(), df["OUTSTANDING"].sum()
     ui.kpis([("Total NoA", D.fmt_num(len(df))), ("Total plafond", D.fmt_money(plafond)),
              ("Total outstanding", D.fmt_money(outstanding)),
-             ("Outstanding / plafond", D.fmt_pct(outstanding / plafond * 100 if plafond else 0))])
+             ("Outstanding / plafond", D.fmt_pct(outstanding / plafond * 100 if plafond else 0)),
+             ("NPL (kol 3-5)", D.fmt_npl(df))])
+    if "IS_NPL" not in df.columns:
+        st.caption(f"NPL % tidak dapat dihitung: kolom {KOL_COLUMN} tidak ada di data.")
 
     # Kartu per segmen (maks. 4 per baris; kolom otomatis turun baris di layar sempit)
     segs = [s for s in SEGMENT_ORDER if s in set(df["PRODUCT_OWNER"])]

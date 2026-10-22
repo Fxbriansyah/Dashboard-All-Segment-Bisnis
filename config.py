@@ -7,6 +7,12 @@ import plotly.express as px
 BASE_DIR = Path(__file__).parent
 CSS_PATH = BASE_DIR / "assets" / "style.css"
 
+# Kolektabilitas (opsional): dipakai untuk menghitung NPL %.
+# NPL = outstanding kolektabilitas 3, 4, 5 (kurang lancar, diragukan, macet) / total outstanding.
+KOL_COLUMN = "KOLEKTABILITAS"
+KOL_ALIASES = ["KOLEKTABILITAS", "KOLEKTIBILITAS", "KOLEKTABILITAS_LOAN", "KOLEK", "KOL", "COLLECTABILITY"]
+NPL_MIN_KOL, NPL_MAX_KOL = 3, 5
+
 # Kolom WAJIB di file Excel.
 REQUIRED_COLUMNS = [
     "PRODUCT_OWNER", "GROUP_PRODUCT", "PLAN_CODE", "JENIS_FASILITAS",
@@ -17,9 +23,9 @@ REQUIRED_COLUMNS = [
 SAFE_DETAIL_COLUMNS = [
     "PRODUCT_OWNER", "GROUP_PRODUCT", "PLAN_CODE", "JENIS_FASILITAS",
     "TAHUN PENCAIRAN", "BULAN_PENCAIRAN", "TANGGAL_PENCAIRAN",
-    "PLAFOND", "OUTSTANDING", "STATUS_LOAN", "BRANCH_CODE",
+    "PLAFOND", "OUTSTANDING", "STATUS_LOAN", KOL_COLUMN, "BRANCH_CODE",
 ]
-TEXT_COLUMNS = ["PRODUCT_OWNER", "GROUP_PRODUCT", "PLAN_CODE", "JENIS_FASILITAS", "STATUS_LOAN", "BRANCH_CODE"]
+TEXT_COLUMNS = ["PRODUCT_OWNER", "GROUP_PRODUCT", "PLAN_CODE", "JENIS_FASILITAS", "STATUS_LOAN", "BRANCH_CODE", KOL_COLUMN]
 
 # Urutan & tema segmen. Segmen yang tidak terdaftar otomatis ditaruh di belakang.
 SEGMENT_ORDER = ["Retail & Micro Loan", "Supply Chain Financing", "Consumer", "SME Commercial"]
@@ -61,5 +67,5 @@ DB_COLUMN_TO_APP = {
     "jenis_fasilitas": "JENIS_FASILITAS", "plafond": "PLAFOND", "outstanding": "OUTSTANDING",
     "status_loan": "STATUS_LOAN", "tahun_pencairan": "TAHUN PENCAIRAN",
     "bulan_pencairan": "BULAN_PENCAIRAN", "tanggal_pencairan": "TANGGAL_PENCAIRAN",
-    "branch_code": "BRANCH_CODE",
+    "branch_code": "BRANCH_CODE", "kolektabilitas": KOL_COLUMN,
 }
