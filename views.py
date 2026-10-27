@@ -175,13 +175,15 @@ def page_summary():
 
 # ======================= 4. DASHBOARD =======================
 def _product_list_html(s, color):
-    """Daftar per group produk: NoA dan plafond (diurutkan dari plafond terbesar)."""
+    """Daftar per group produk: NoA, plafond, dan NPL % (diurutkan dari plafond terbesar)."""
     agg = {"noa": ("PLAFOND", "size"), "plafond": ("PLAFOND", "sum")}
     g = s.groupby("GROUP_PRODUCT").agg(**agg).sort_values("plafond", ascending=False)
+    npl = {name: D.fmt_npl(grp) for name, grp in s.groupby("GROUP_PRODUCT")}
     rows = "".join(
         f'<div class="prod"><div class="prod-top"><b>{html.escape(str(name))}</b>'
         f'<span>NoA {D.fmt_num(r["noa"])}</span></div>'
-        f'<div class="prod-row"><span>Plafond</span><b>{D.fmt_money(r["plafond"])}</b></div></div>'
+        f'<div class="prod-row"><span>Plafond</span><b>{D.fmt_money(r["plafond"])}</b></div>'
+        f'<div class="prod-row"><span>NPL (kol 3-5)</span><b>{npl[name]}</b></div></div>'
         for name, r in g.iterrows())
     return (f'<div class="seg-sub" style="--seg-color:{color}">Rincian per produk ({len(g)})</div>'
             f'<div class="prod-list">{rows}</div>')
