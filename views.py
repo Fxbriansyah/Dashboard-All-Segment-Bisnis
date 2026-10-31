@@ -360,30 +360,27 @@ def _reset_filters():
         st.session_state[k] = []
 
 
-def _filter_bar(df0, compact=False):
-    """Bar filter di atas halaman (menggantikan sidebar). compact=True: dilipat dalam expander (mode Ringkas)."""
+def _sidebar_filters(df0):
+    """Filter + pilihan tampilan (Ringkas / Rinci) di sidebar."""
     caption = f"Sumber: {st.session_state.get('file_name', '-')} · kolom identitas sensitif tidak ditampilkan di tabel."
-    with (st.expander("Filter & pengaturan") if compact else st.container(border=False, key="tile_filter")):
-        c1, c2, c3, c4 = st.columns([1, 1, 1, 1.2])
-        c1.multiselect("Tahun pencairan", sorted(df0["TAHUN PENCAIRAN"].dropna().unique()), key="f_year",
+    with st.sidebar:
+        st.markdown('<div class="side-title">Filter data</div>'
+                    '<div class="side-desc">Atur tampilan dan saring data dashboard.</div>', unsafe_allow_html=True)
+        st.radio("Tampilan", ["Ringkas", "Rinci"], horizontal=True, key="view_mode")
+        st.multiselect("Tahun pencairan", sorted(df0["TAHUN PENCAIRAN"].dropna().unique()), key="f_year",
                        format_func=D.fmt_tahun, placeholder="Semua")
-        c2.multiselect("Bulan pencairan", sorted(df0["BULAN_PENCAIRAN"].dropna().unique()), key="f_month",
+        st.multiselect("Bulan pencairan", sorted(df0["BULAN_PENCAIRAN"].dropna().unique()), key="f_month",
                        format_func=D.fmt_bulan, placeholder="Semua")
-        c3.multiselect("Status loan", sorted(df0["STATUS_LOAN"].unique()), key="f_status",
+        st.multiselect("Status loan", sorted(df0["STATUS_LOAN"].unique()), key="f_status",
                        format_func=D.fmt_status, placeholder="Semua")
         aktif = sum(bool(st.session_state.get(k)) for k in FILTER_KEYS)
         info = f"dari {D.fmt_num(len(df0))} record" + (f" · {aktif} filter aktif" if aktif else "")
-        with c4:
-            st.markdown(f'<div class="side-result"><span>Data ditampilkan</span>'
-                        f'<b>{D.fmt_num(len(_apply_filters(df0)))}</b><small>{info}</small></div>',
-                        unsafe_allow_html=True)
-            b1, b2 = st.columns(2)
-            b1.button("Reset filter", on_click=_reset_filters, width="stretch", disabled=not aktif)
-            if b2.button("Upload ulang", width="stretch"):
-                reset_all()
-        if compact:
-            st.caption(caption)
-    if not compact:
+        st.markdown(f'<div class="side-result"><span>Data ditampilkan</span>'
+                    f'<b>{D.fmt_num(len(_apply_filters(df0)))}</b><small>{info}</small></div>',
+                    unsafe_allow_html=True)
+        st.button("Reset filter", on_click=_reset_filters, width="stretch", disabled=not aktif)
+        if st.button("Upload ulang", width="stretch"):
+            reset_all()
         st.caption(caption)
 
 
@@ -551,18 +548,17 @@ def page_dashboard():
     ts = st.session_state.get("processed_at")
     st.markdown(f"<style>{THEME_CSS}</style>", unsafe_allow_html=True)
     st.session_state.setdefault("view_mode", "Ringkas")
-    left, mid, right = st.columns([3, 1.1, 1])
-    mid.radio("Tampilan", ["Ringkas", "Rinci"], horizontal=True, key="view_mode", label_visibility="collapsed")
+    _sidebar_filters(df0)
     ringkas = st.session_state["view_mode"] == "Ringkas"
+    left, right = st.columns([4, 1])
     left.markdown('<div class="title-card"><div class="page-title">Dashboard Pencairan</div>'
                   '<div class="page-desc">Semua segmen bisnis</div></div>', unsafe_allow_html=True)
     right.markdown(f'<div class="chip">Data diproses<b>{ts.strftime("%d %b %Y %H:%M") if ts else "-"}</b></div>',
                    unsafe_allow_html=True)
     st.write("")
-    _filter_bar(df0, compact=ringkas)
     df = _apply_filters(df0)
     if df.empty:
-        st.info("Tidak ada data untuk filter ini. Ubah atau reset filter di atas.")
+        st.info("Tidak ada data untuk filter ini. Ubah atau reset filter di sidebar.")
         return
     if ringkas:
         _dashboard_ringkas(df)

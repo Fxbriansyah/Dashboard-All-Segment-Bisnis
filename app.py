@@ -11,7 +11,7 @@ st.set_page_config(
     page_title="Dashboard Pencairan",
     page_icon=str(LOGO),
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="expanded",
 )
 if LOGO.exists():
     st.logo(str(LOGO), size="large")
@@ -28,8 +28,8 @@ PAGES = {
 
 
 def main():
-    ui.inject_css()
     st.session_state.setdefault("stage", "upload")
+    ui.inject_css(show_sidebar=st.session_state.stage == "dashboard")
     PAGES.get(st.session_state.stage, views.page_upload)()
 
 

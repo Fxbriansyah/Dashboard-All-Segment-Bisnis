@@ -10,14 +10,14 @@ from config import BRAND, CSS_PATH, STEPS
 # Hapus blok ini kalau ingin kembali ke tampilan lama.
 EXTRA_CSS = """
 /* Sembunyikan bilah atas Streamlit (Deploy, menu titik tiga, garis warna, status "Running").
-   Header dibiarkan transparan (logo tetap tampil) dan tidak menangkap klik, supaya tombol di bawahnya bisa diklik. */
+   Header dibiarkan transparan (logo tetap tampil) dan tidak menangkap klik, supaya tombol di bawahnya bisa diklik.
+   Tombol buka/tutup sidebar dikecualikan supaya tetap bisa diklik. */
 [data-testid="stToolbar"],[data-testid="stAppDeployButton"],[data-testid="stMainMenu"],
 [data-testid="stDecoration"],[data-testid="stStatusWidget"],#MainMenu,footer{display:none !important}
 [data-testid="stHeader"]{background:transparent !important;pointer-events:none !important}
 [data-testid="stMainBlockContainer"]{padding-top:4.5rem !important}
-/* Sidebar dihilangkan; filter ada di bar atas halaman */
-[data-testid="stSidebar"],[data-testid="stSidebarCollapsedControl"],[data-testid="collapsedControl"],
-[data-testid="stExpandSidebarButton"]{display:none !important}
+[data-testid="stSidebarCollapsedControl"],[data-testid="stExpandSidebarButton"],
+[data-testid="stSidebarCollapseButton"]{pointer-events:auto !important}
 
 /* NPL: badge berwarna (hijau < NPL_WARN, kuning < NPL_BAD, merah di atasnya) */
 .npl{display:inline-block;padding:2px 9px;border-radius:999px;font-weight:700;font-size:.82em;line-height:1.5;white-space:nowrap}
@@ -48,9 +48,16 @@ EXTRA_CSS = """
 .prod-meta b{font-weight:700;color:#0f172a}
 """
 
+# Sidebar hanya dipakai di halaman Dashboard (berisi filter); di halaman lain disembunyikan.
+HIDE_SIDEBAR_CSS = """
+[data-testid="stSidebar"],[data-testid="stSidebarCollapsedControl"],[data-testid="collapsedControl"],
+[data-testid="stExpandSidebarButton"]{display:none !important}
+"""
 
-def inject_css():
-    st.markdown(f"<style>{CSS_PATH.read_text(encoding='utf-8')}{EXTRA_CSS}</style>", unsafe_allow_html=True)
+
+def inject_css(show_sidebar=False):
+    css = CSS_PATH.read_text(encoding="utf-8") + EXTRA_CSS + ("" if show_sidebar else HIDE_SIDEBAR_CSS)
+    st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
 
 
 def page_header(title, desc=""):
