@@ -366,7 +366,9 @@ def _sidebar_filters(df0):
     with st.sidebar:
         st.markdown('<div class="side-title">Filter data</div>'
                     '<div class="side-desc">Atur tampilan dan saring data dashboard.</div>', unsafe_allow_html=True)
-        st.radio("Tampilan", ["Ringkas", "Rinci"], horizontal=True, key="view_mode")
+        st.segmented_control("Tampilan", ["Ringkas", "Rinci"], key="view_mode", width="stretch",
+                             format_func=lambda m: {"Ringkas": "▦ Ringkas", "Rinci": "☰ Rinci"}[m])
+        st.caption("Ringkas: semua tile dalam satu layar. Rinci: lengkap dengan kartu segmen, grafik, dan tabel.")
         st.multiselect("Tahun pencairan", sorted(df0["TAHUN PENCAIRAN"].dropna().unique()), key="f_year",
                        format_func=D.fmt_tahun, placeholder="Semua")
         st.multiselect("Bulan pencairan", sorted(df0["BULAN_PENCAIRAN"].dropna().unique()), key="f_month",
@@ -549,7 +551,7 @@ def page_dashboard():
     st.markdown(f"<style>{THEME_CSS}</style>", unsafe_allow_html=True)
     st.session_state.setdefault("view_mode", "Ringkas")
     _sidebar_filters(df0)
-    ringkas = st.session_state["view_mode"] == "Ringkas"
+    ringkas = st.session_state.get("view_mode") != "Rinci"   # None (pilihan dilepas) dianggap Ringkas
     left, right = st.columns([4, 1])
     left.markdown('<div class="title-card"><div class="page-title">Dashboard Pencairan</div>'
                   '<div class="page-desc">Semua segmen bisnis</div></div>', unsafe_allow_html=True)
