@@ -273,13 +273,18 @@ def _trend_chart(d, x, order, metric, segs, xfmt=None, date_axis=False, tickangl
     fig = px.bar(g, x=x, y="val", color="PRODUCT_OWNER", category_orders=cats,
                  color_discrete_map={n: SEGMENT_THEME.get(n, DEFAULT_THEME)["color"] for n in segs})
     unit = "Rp %{y:,.0f}" if metric == "Plafond" else "%{y:,.0f} rekening"
-    fig.update_traces(hovertemplate=f"%{{x{('|' + xfmt) if xfmt else ''}}}<br>%{{fullData.name}}: {unit}<extra></extra>")
-    fig.update_layout(bargap=0.25, barmode="stack")
+    fig.update_traces(hovertemplate=f"%{{fullData.name}}: {unit}<extra></extra>")   # judul hover = nilai sumbu X
+    fig.update_layout(bargap=0.3, barmode="stack", hovermode="x unified")
     fig.update_xaxes(type="date" if date_axis else "category", tickangle=tickangle,
-                     **({"tickformat": "%d %b"} if date_axis else {}))
+                     **({"tickformat": "%d %b", "hoverformat": "%d %b %Y"} if date_axis else {}))
     if metric == "Plafond":
         ui.rupiah_axis(fig, g.groupby(x)["val"].sum().max())
-    ui.show_fig(ui.style_fig(fig, 300, legend_bottom=True))
+    ui.style_fig(fig, 330)
+    # legenda di atas grafik (di bawah bertabrakan dengan label sumbu X yang miring)
+    fig.update_layout(margin=dict(l=8, r=8, t=44, b=8),
+                      legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0,
+                                  font=dict(size=12), title_text=""))
+    ui.show_fig(fig)
 
 
 def _trend_section(df):
@@ -314,7 +319,8 @@ def _trend_section(df):
             d = d[d["_p"].isin(periods)]
             label = lambda p: f"{D.fmt_bulan(p % 100)[:3]} {p // 100}"
             d["BULAN"] = d["_p"].map(label)
-            _trend_chart(d, "BULAN", [label(p) for p in periods], metric, segs, tickangle=-45)
+            _trend_chart(d, "BULAN", [label(p) for p in periods], metric, segs,
+                         tickangle=-45 if len(periods) > 12 else 0)
             st.caption(f"Menampilkan {len(periods)} bulan terakhir (maks. {TREND_MONTHS}).")
 
     with t_year:
