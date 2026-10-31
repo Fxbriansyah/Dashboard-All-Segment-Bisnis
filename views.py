@@ -394,7 +394,7 @@ def _apply_filters(df0):
 
 THEME_CSS = """
 .stApp{background:#19c98f !important}
-[data-testid="stMainBlockContainer"]{padding-top:3.8rem !important;padding-bottom:1rem !important;max-width:100% !important}
+[data-testid="stMainBlockContainer"]{padding-top:1.2rem !important;padding-bottom:1rem !important;max-width:100% !important}
 [class*="st-key-tile_"],[data-testid="stExpander"]{background:#fff !important;border:0 !important;
   border-radius:20px !important;box-shadow:none !important;box-sizing:border-box}
 [class*="st-key-tile_"]{padding:12px 14px !important}
