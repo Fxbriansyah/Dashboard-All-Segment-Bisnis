@@ -238,8 +238,6 @@ def segment_card(df, segment):
 def _npl_check(df):
     """Panel pemeriksaan: tampilkan dasar hitung NPL % supaya angka yang janggal (mis. 100%) mudah ditelusuri."""
     with st.expander("Cek perhitungan NPL"):
-        st.caption("NPL % = outstanding kolektabilitas 3-5 / total outstanding. "
-                   "Kalau persennya tinggi, lihat apakah total outstanding produk itu memang kecil.")
         kol = (df.groupby(KOL_COLUMN).agg(noa=("OUTSTANDING", "size"), out=("OUTSTANDING", "sum"))
                .reset_index().sort_values(KOL_COLUMN))
         tot = kol["out"].sum()
