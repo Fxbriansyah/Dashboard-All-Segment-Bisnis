@@ -10,10 +10,10 @@ from config import BRAND, CSS_PATH, STEPS
 # Hapus blok ini kalau ingin kembali ke tampilan lama.
 EXTRA_CSS = """
 /* Sembunyikan bilah atas Streamlit (Deploy, menu titik tiga, garis warna, status "Running").
-   Header dibiarkan transparan (logo tetap tampil). */
+   Header dibiarkan transparan (logo tetap tampil) dan tidak menangkap klik, supaya tombol di bawahnya bisa diklik. */
 [data-testid="stToolbar"],[data-testid="stAppDeployButton"],[data-testid="stMainMenu"],
 [data-testid="stDecoration"],[data-testid="stStatusWidget"],#MainMenu,footer{display:none !important}
-[data-testid="stHeader"]{background:transparent !important}
+[data-testid="stHeader"]{background:transparent !important;pointer-events:none !important}
 [data-testid="stMainBlockContainer"]{padding-top:4.5rem !important}
 /* Sidebar dihilangkan; filter ada di bar atas halaman */
 [data-testid="stSidebar"],[data-testid="stSidebarCollapsedControl"],[data-testid="collapsedControl"],

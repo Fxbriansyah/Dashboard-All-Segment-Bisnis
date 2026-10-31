@@ -398,10 +398,11 @@ def _apply_filters(df0):
 
 RINGKAS_CSS = """
 .stApp{background:#19c98f !important}
-[data-testid="stMainBlockContainer"]{padding-top:3.2rem !important;padding-bottom:1rem !important;max-width:100% !important}
+[data-testid="stMainBlockContainer"]{padding-top:3.8rem !important;padding-bottom:1rem !important;max-width:100% !important}
 [data-testid="stVerticalBlock"]{gap:.7rem !important}
-[data-testid="stVerticalBlockBorderWrapper"],[data-testid="stExpander"]{background:#fff !important;border:0 !important;
-  border-radius:20px !important;box-shadow:none !important}
+[class*="st-key-tile_"],[data-testid="stExpander"]{background:#fff !important;border:0 !important;
+  border-radius:20px !important;box-shadow:none !important;box-sizing:border-box}
+[class*="st-key-tile_"]{padding:12px 14px !important}
 [data-testid="stExpander"] details{border:0 !important}
 .tile-title{font-weight:800;font-size:14px;color:#0f172a;text-align:center;margin-bottom:2px}
 .tile-big{font-size:30px;font-weight:800;color:#0f172a;text-align:center;line-height:1.2;margin-top:6px}
@@ -459,14 +460,14 @@ def _dashboard_ringkas(df):
            ("Total outstanding", _rp(outstanding), "sisa pokok yang berjalan"),
            ("Outstanding / plafond", D.fmt_pct(outstanding / plafond * 100 if plafond else 0), "dari total plafond"),
            ("NPL (kol 3-5)", _badge(D.npl_pct(df)), f"batas sehat di bawah {NPL_BAD:g}%")]
-    for col, (t, v, sub) in zip(st.columns(5), kpi):
-        with col, st.container(border=True, height=H_KPI):
+    for i, (col, (t, v, sub)) in enumerate(zip(st.columns(5), kpi)):
+        with col, st.container(border=False, height=H_KPI, key=f"tile_kpi{i}"):
             st.markdown(f'<div class="tile-title">{t}</div><div class="tile-big">{v}</div>'
                         f'<div class="tile-sub">{sub}</div>', unsafe_allow_html=True)
 
     # --- Baris 2: tren bulanan + ringkasan per segmen ---
     a, b = st.columns([2, 1.2])
-    with a, st.container(border=True, height=H_ROW):
+    with a, st.container(border=False, height=H_ROW, key="tile_tren"):
         _tile_title("Tren pencairan bulanan (plafond)")
         d = df.dropna(subset=["TAHUN PENCAIRAN", "BULAN_PENCAIRAN"]).copy()
         if d.empty:
@@ -479,7 +480,7 @@ def _dashboard_ringkas(df):
             d["BULAN"] = d["_p"].map(label)
             _trend_chart(d, "BULAN", [label(p) for p in periods], "Plafond", segs, "Garis",
                          height=H_ROW - 54, tmargin=26)
-    with b, st.container(border=True, height=H_ROW):
+    with b, st.container(border=False, height=H_ROW, key="tile_segmen"):
         _tile_title("Ringkasan per segmen")
         rows = []
         for n in segs:
@@ -492,7 +493,7 @@ def _dashboard_ringkas(df):
 
     # --- Baris 3: 4 tile kecil ---
     c1, c2, c3, c4 = st.columns(4)
-    with c1, st.container(border=True, height=H_ROW):
+    with c1, st.container(border=False, height=H_ROW, key="tile_mingguan"):
         _tile_title("Pencairan 7 hari terakhir (plafond)")
         w = df.dropna(subset=["TANGGAL_PENCAIRAN"])
         if w.empty:
@@ -510,13 +511,13 @@ def _dashboard_ringkas(df):
             fig.update_yaxes(visible=False, range=[0, max(v.max() * 1.3, 1)])
             ui.show_fig(ui.style_fig(fig, H_ROW - 54))
     ps = _product_stats(df)
-    with c2, st.container(border=True, height=H_ROW):
+    with c2, st.container(border=False, height=H_ROW, key="tile_topproduk"):
         _tile_title("Top 5 produk (plafond)")
         top = ps.sort_values("plafond", ascending=False).head(5)
         st.markdown(_mini_table(["Produk", "Plafond", "NPL"], [
             [html.escape(str(r.GROUP_PRODUCT)), _rp(r.plafond), _badge(r.pct)] for r in top.itertuples()]),
             unsafe_allow_html=True)
-    with c3, st.container(border=True, height=H_ROW):
+    with c3, st.container(border=False, height=H_ROW, key="tile_nplproduk"):
         _tile_title("NPL tertinggi (produk)")
         if "IS_NPL" not in df.columns:
             st.info(f"Kolom {KOL_COLUMN} tidak ada di data.")
@@ -525,7 +526,7 @@ def _dashboard_ringkas(df):
             st.markdown(_mini_table(["Produk", "Outstanding", "NPL"], [
                 [html.escape(str(r.GROUP_PRODUCT)), _rp(r.outstanding), _badge(r.pct)] for r in risk.itertuples()]),
                 unsafe_allow_html=True)
-    with c4, st.container(border=True, height=H_ROW):
+    with c4, st.container(border=False, height=H_ROW, key="tile_donut"):
         _tile_title("Outstanding per segmen")
         o = df.groupby("PRODUCT_OWNER", as_index=False)["OUTSTANDING"].sum()
         fig = px.pie(o, names="PRODUCT_OWNER", values="OUTSTANDING", hole=0.55, color="PRODUCT_OWNER",
