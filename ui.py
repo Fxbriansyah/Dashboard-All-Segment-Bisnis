@@ -65,6 +65,9 @@ SHOW_SIDEBAR_CSS = """
     width:21rem !important;min-width:21rem !important;max-width:21rem !important}
   [data-testid="stSidebarCollapseButton"],[data-testid="stSidebarCollapsedControl"],
   [data-testid="stExpandSidebarButton"]{display:none !important}
+  /* logo di header halaman utama disembunyikan (logo sudah tampil di sidebar) */
+  [data-testid="stHeader"] [data-testid="stHeaderLogo"],[data-testid="stHeader"] [data-testid="stLogoLink"],
+  [data-testid="stHeader"] a:has(img){display:none !important}
 }
 """
 
