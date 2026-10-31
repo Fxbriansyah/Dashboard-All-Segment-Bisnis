@@ -6,7 +6,7 @@ import pandas as pd
 import streamlit as st
 
 from config import (BULAN_LABEL, BULAN_TEXT_TO_NUM, DB_COLUMN_TO_APP, DB_CONFIG, KOL_ALIASES, KOL_COLUMN,
-                    NPL_MAX_KOL, NPL_MIN_KOL,
+                    NPL_BAD, NPL_MAX_KOL, NPL_MIN_KOL, NPL_WARN,
                     REQUIRED_COLUMNS, STATUS_LOAN_LABEL, TEXT_COLUMNS)
 
 
@@ -57,6 +57,19 @@ def npl_pct(df):
 def fmt_npl(df):
     p = npl_pct(df)
     return "-" if p is None else fmt_pct(p)
+
+
+def npl_level(p):
+    """na (tidak ada data) / ok / warn / bad, sesuai ambang NPL_WARN dan NPL_BAD di config."""
+    if p is None:
+        return "na"
+    return "ok" if p < NPL_WARN else "warn" if p < NPL_BAD else "bad"
+
+
+def npl_badge(df, prefix=""):
+    """Badge HTML berwarna untuk NPL % (hijau / kuning / merah)."""
+    p = npl_pct(df)
+    return f'<span class="npl npl-{npl_level(p)}">{prefix}{"-" if p is None else fmt_pct(p)}</span>'
 
 
 # ---------- Pipeline Excel ----------

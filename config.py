@@ -12,6 +12,8 @@ CSS_PATH = BASE_DIR / "assets" / "style.css"
 KOL_COLUMN = "KOLEKTABILITAS"
 KOL_ALIASES = ["KOLEKTABILITAS", "KOLEKTIBILITAS", "KOLEKTABILITAS_LOAN", "KOLEK", "KOL", "COLLECTABILITY"]
 NPL_MIN_KOL, NPL_MAX_KOL = 3, 5
+# Ambang warna NPL %: di bawah NPL_WARN = hijau, NPL_WARN..NPL_BAD = kuning, di atas NPL_BAD = merah.
+NPL_WARN, NPL_BAD = 2.0, 5.0
 
 # Kolom WAJIB di file Excel.
 REQUIRED_COLUMNS = [

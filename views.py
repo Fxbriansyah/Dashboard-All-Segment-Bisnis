@@ -12,7 +12,7 @@ import html
 import data as D
 import ui
 
-from config import (BRAND, BRAND_LIGHT, DB_CONFIG, DEFAULT_THEME, KOL_COLUMN, PRODUCT_COLORS,
+from config import (BRAND, BRAND_LIGHT, DB_CONFIG, DEFAULT_THEME, KOL_COLUMN, NPL_BAD, PRODUCT_COLORS,
                     REQUIRED_COLUMNS, SAFE_DETAIL_COLUMNS, SEGMENT_ORDER, SEGMENT_THEME)
 
 try:   # zona waktu WIB; butuh paket `tzdata` di Windows
@@ -31,6 +31,8 @@ SESSION_KEYS = ["stage", "data", "file_hash", "file_name", "processed_at"]
 FILTER_KEYS = ["f_year", "f_month", "f_status"]
 CHART_BOX = 400   # tinggi kotak chart di baris tiga chart (px)
 LEGEND_TALL = 130   # tinggi kotak legenda produk di chart donut (px); sisanya bisa di-scroll
+TOP_PRODUK = 5   # jumlah produk yang langsung tampil per segmen; sisanya di dalam "Lihat produk lainnya"
+TREND_MONTHS, TREND_DAYS = 24, 31   # jumlah bulan / hari terakhir yang ditampilkan di grafik tren
 
 
 def go_to(stage):
@@ -174,19 +176,23 @@ def page_summary():
 
 
 # ======================= 4. DASHBOARD =======================
-def _product_list_html(s, color):
-    """Daftar per group produk: NoA, plafond, dan NPL % (diurutkan dari plafond terbesar)."""
-    agg = {"noa": ("PLAFOND", "size"), "plafond": ("PLAFOND", "sum")}
-    g = s.groupby("GROUP_PRODUCT").agg(**agg).sort_values("plafond", ascending=False)
-    npl = {name: D.fmt_npl(grp) for name, grp in s.groupby("GROUP_PRODUCT")}
-    rows = "".join(
-        f'<div class="prod"><div class="prod-top"><b>{html.escape(str(name))}</b>'
-        f'<span>NoA {D.fmt_num(r["noa"])}</span></div>'
-        f'<div class="prod-row"><span>Plafond</span><b>{D.fmt_money(r["plafond"])}</b></div>'
-        f'<div class="prod-row"><span>NPL (kol 3-5)</span><b>{npl[name]}</b></div></div>'
-        for name, r in g.iterrows())
-    return (f'<div class="seg-sub" style="--seg-color:{color}">Rincian per produk ({len(g)})</div>'
-            f'<div class="prod-list">{rows}</div>')
+def _rp(x):
+    """Nominal ringkas ('Rp 172,7 T'); nominal penuh muncul saat kursor diarahkan (tooltip)."""
+    return f'<span title="{D.fmt_money(x)}">Rp {ui.compact_rp(float(x or 0))}</span>'
+
+
+def _product_rows(s, names):
+    """Baris produk (2 baris per produk): nama + NoA, lalu plafond + badge NPL."""
+    rows = []
+    for name in names:
+        g = s[s["GROUP_PRODUCT"] == name]
+        rows.append(
+            f'<div class="prod"><div class="prod-top"><b>{html.escape(str(name))}</b>'
+            f'<span>NoA {D.fmt_num(len(g))}</span></div>'
+            f'<div class="prod-meta"><span>Plafond <b>{_rp(g["PLAFOND"].sum())}</b></span>'
+            f'{D.npl_badge(g, "NPL ")}</div></div>')
+    return "".join(rows)
+
 
 def _legend_html(cmap, tall=False):
     """Legenda nama produk: 2 kolom, tinggi tetap (2 baris; tall=4 baris), sisanya bisa di-scroll."""
@@ -195,22 +201,30 @@ def _legend_html(cmap, tall=False):
     style = f' style="height:{LEGEND_TALL}px;max-height:{LEGEND_TALL}px;overflow-y:auto"' if tall else ""
     return f'<div class="legend{" tall" if tall else ""}"{style}>{items}</div>'
 
+
 def segment_card(df, segment):
     th = SEGMENT_THEME.get(segment, DEFAULT_THEME)
     s = df[df["PRODUCT_OWNER"] == segment]
     plafond = s["PLAFOND"].sum()
+    names = list(s.groupby("GROUP_PRODUCT")["PLAFOND"].sum().sort_values(ascending=False).index)
     with st.container(border=True):
         st.markdown(
             f'<div class="seg-head" style="--seg-bg:{th["bg"]};--seg-border:{th["border"]};--seg-color:{th["color"]}">'
             f'<span>{th["icon"]}</span>{segment}</div>'
             f'<div class="seg-stats">'
             f'<div><span>NoA</span><b>{D.fmt_num(len(s))}</b></div>'
-            f'<div><span>Produk</span><b>{D.fmt_num(s["GROUP_PRODUCT"].nunique())}</b></div>'
-            f'<div class="wide"><span>Plafond</span><b>{D.fmt_money(plafond)}</b></div>'
-            f'<div class="wide"><span>NPL (kol 3-5)</span><b>{D.fmt_npl(s)}</b></div></div>'
-            + _product_list_html(s, th["color"])
-            + f'<div class="seg-sub" style="--seg-color:{th["color"]}">Komposisi group produk</div>',
+            f'<div><span>Produk</span><b>{D.fmt_num(len(names))}</b></div>'
+            f'<div class="wide"><span>Plafond</span><b>{_rp(plafond)}</b></div>'
+            f'<div class="wide"><span>NPL (kol 3-5)</span><b>{D.npl_badge(s)}</b></div></div>'
+            f'<div class="seg-sub" style="--seg-color:{th["color"]}">Rincian per produk ({len(names)})</div>'
+            f'<div class="prod-list">{_product_rows(s, names[:TOP_PRODUK])}</div>',
             unsafe_allow_html=True)
+        if len(names) > TOP_PRODUK:
+            with st.expander(f"Lihat {len(names) - TOP_PRODUK} produk lainnya"):
+                st.markdown(f'<div class="prod-list">{_product_rows(s, names[TOP_PRODUK:])}</div>',
+                            unsafe_allow_html=True)
+        st.markdown(f'<div class="seg-sub" style="--seg-color:{th["color"]}">Komposisi group produk</div>',
+                    unsafe_allow_html=True)
         produk = s.groupby("GROUP_PRODUCT").size().rename("Jumlah").reset_index().sort_values("Jumlah", ascending=False)
         if not produk.empty:
             cmap = {n: PRODUCT_COLORS[i % len(PRODUCT_COLORS)] for i, n in enumerate(produk["GROUP_PRODUCT"])}
@@ -220,6 +234,100 @@ def segment_card(df, segment):
             fig.update_layout(showlegend=False)
             ui.show_fig(ui.style_fig(fig, height=210))
             st.markdown(_legend_html(cmap), unsafe_allow_html=True)
+
+
+def _npl_check(df):
+    """Panel pemeriksaan: tampilkan dasar hitung NPL % supaya angka yang janggal (mis. 100%) mudah ditelusuri."""
+    with st.expander("Cek perhitungan NPL"):
+        st.caption("NPL % = outstanding kolektabilitas 3-5 / total outstanding. "
+                   "Kalau persennya tinggi, lihat apakah total outstanding produk itu memang kecil.")
+        kol = (df.groupby(KOL_COLUMN).agg(noa=("OUTSTANDING", "size"), out=("OUTSTANDING", "sum"))
+               .reset_index().sort_values(KOL_COLUMN))
+        tot = kol["out"].sum()
+        kol_view = pd.DataFrame({
+            "Kolektabilitas (nilai asli di file)": kol[KOL_COLUMN],
+            "NoA": kol["noa"].map(D.fmt_num),
+            "Outstanding": kol["out"].map(D.fmt_money),
+            "% dari total outstanding": (kol["out"] / tot * 100 if tot else kol["out"] * 0).map(D.fmt_pct)})
+        st.markdown("**Sebaran per nilai kolektabilitas**")
+        st.dataframe(kol_view, hide_index=True, width="stretch")
+
+        d = df.assign(_npl_out=df["OUTSTANDING"].where(df["IS_NPL"], 0), _aktif=df["OUTSTANDING"] > 0,
+                      _npl_noa=df["IS_NPL"])
+        prod = (d.groupby(["PRODUCT_OWNER", "GROUP_PRODUCT"])
+                .agg(noa=("OUTSTANDING", "size"), aktif=("_aktif", "sum"), npl_noa=("_npl_noa", "sum"),
+                     total=("OUTSTANDING", "sum"), npl=("_npl_out", "sum")).reset_index())
+        prod["pct"] = (prod["npl"] / prod["total"] * 100).where(prod["total"] > 0, 0)
+        prod = prod.sort_values("pct", ascending=False)
+        prod_view = pd.DataFrame({
+            "Segmen": prod["PRODUCT_OWNER"], "Produk": prod["GROUP_PRODUCT"],
+            "NoA": prod["noa"].map(D.fmt_num), "NoA outstanding > 0": prod["aktif"].map(D.fmt_num),
+            "NoA kol 3-5": prod["npl_noa"].map(D.fmt_num),
+            "Total outstanding": prod["total"].map(D.fmt_money), "Outstanding kol 3-5": prod["npl"].map(D.fmt_money),
+            "NPL %": prod["pct"].map(D.fmt_pct)})
+        st.markdown("**Rincian per produk (diurutkan dari NPL % tertinggi)**")
+        st.dataframe(prod_view, hide_index=True, width="stretch")
+
+
+def _trend_chart(d, x, order, metric, segs, xfmt=None, date_axis=False, tickangle=0):
+    """Stacked bar per segmen. x = kolom sumbu X; metric = 'Plafond' (nominal) atau 'NoA' (jumlah rekening)."""
+    g = d.groupby([x, "PRODUCT_OWNER"], as_index=False).agg(val=("PLAFOND", "sum" if metric == "Plafond" else "size"))
+    cats = {"PRODUCT_OWNER": segs} if date_axis else {"PRODUCT_OWNER": segs, x: order}
+    fig = px.bar(g, x=x, y="val", color="PRODUCT_OWNER", category_orders=cats,
+                 color_discrete_map={n: SEGMENT_THEME.get(n, DEFAULT_THEME)["color"] for n in segs})
+    unit = "Rp %{y:,.0f}" if metric == "Plafond" else "%{y:,.0f} rekening"
+    fig.update_traces(hovertemplate=f"%{{x{('|' + xfmt) if xfmt else ''}}}<br>%{{fullData.name}}: {unit}<extra></extra>")
+    fig.update_layout(bargap=0.25, barmode="stack")
+    fig.update_xaxes(type="date" if date_axis else "category", tickangle=tickangle,
+                     **({"tickformat": "%d %b"} if date_axis else {}))
+    if metric == "Plafond":
+        ui.rupiah_axis(fig, g.groupby(x)["val"].sum().max())
+    ui.show_fig(ui.style_fig(fig, 300, legend_bottom=True))
+
+
+def _trend_section(df):
+    """Tren pencairan harian / bulanan / tahunan, dipecah per segmen."""
+    st.subheader("Tren pencairan")
+    metric = st.radio("Ukuran", ["Plafond", "NoA"], horizontal=True, key="trend_metric",
+                      label_visibility="collapsed")
+    segs = [s for s in SEGMENT_ORDER if s in set(df["PRODUCT_OWNER"])]
+    segs += [s for s in df["PRODUCT_OWNER"].unique() if s not in segs]
+    t_day, t_month, t_year = st.tabs(["Harian", "Bulanan", "Tahunan"])
+
+    with t_day:
+        d = df.dropna(subset=["TANGGAL_PENCAIRAN"]).copy()
+        if d.empty:
+            st.info("Tidak ada tanggal pencairan yang valid untuk filter ini.")
+        else:
+            d["TANGGAL"] = d["TANGGAL_PENCAIRAN"].dt.normalize()
+            days = sorted(d["TANGGAL"].unique())[-TREND_DAYS:]
+            d = d[d["TANGGAL"].isin(days)]
+            _trend_chart(d, "TANGGAL", days, metric, segs, xfmt="%d %b %Y", date_axis=True)
+            n_kosong = int(df["TANGGAL_PENCAIRAN"].isna().sum())
+            st.caption(f"Menampilkan {len(days)} hari pencairan terakhir (maks. {TREND_DAYS})."
+                       + (f" {D.fmt_num(n_kosong)} baris tanpa tanggal valid tidak ikut." if n_kosong else ""))
+
+    with t_month:
+        d = df.dropna(subset=["TAHUN PENCAIRAN", "BULAN_PENCAIRAN"]).copy()
+        if d.empty:
+            st.info("Tidak ada data tahun/bulan pencairan untuk filter ini.")
+        else:
+            d["_p"] = d["TAHUN PENCAIRAN"].astype(int) * 100 + d["BULAN_PENCAIRAN"].astype(int)
+            periods = sorted(d["_p"].unique())[-TREND_MONTHS:]
+            d = d[d["_p"].isin(periods)]
+            label = lambda p: f"{D.fmt_bulan(p % 100)[:3]} {p // 100}"
+            d["BULAN"] = d["_p"].map(label)
+            _trend_chart(d, "BULAN", [label(p) for p in periods], metric, segs, tickangle=-45)
+            st.caption(f"Menampilkan {len(periods)} bulan terakhir (maks. {TREND_MONTHS}).")
+
+    with t_year:
+        d = df.dropna(subset=["TAHUN PENCAIRAN"]).copy()
+        if d.empty:
+            st.info("Tidak ada data tahun pencairan untuk filter ini.")
+        else:
+            years = sorted(d["TAHUN PENCAIRAN"].astype(int).unique())
+            d["TAHUN"] = d["TAHUN PENCAIRAN"].astype(int).astype(str)
+            _trend_chart(d, "TAHUN", [str(y) for y in years], metric, segs)
 
 
 def _reset_filters():
@@ -277,12 +385,20 @@ def page_dashboard():
         return
 
     plafond, outstanding = df["PLAFOND"].sum(), df["OUTSTANDING"].sum()
-    ui.kpis([("Total NoA", D.fmt_num(len(df))), ("Total plafond", D.fmt_money(plafond)),
-             ("Total outstanding", D.fmt_money(outstanding)),
-             ("Outstanding / plafond", D.fmt_pct(outstanding / plafond * 100 if plafond else 0)),
-             ("NPL (kol 3-5)", D.fmt_npl(df))])
+    npl_p = D.npl_pct(df)
+    ui.kpis([
+        ("Total NoA", D.fmt_num(len(df)), "jumlah rekening pencairan"),
+        ("Total plafond", _rp(plafond), "total yang dicairkan", D.fmt_money(plafond)),
+        ("Total outstanding", _rp(outstanding), "sisa pokok yang masih berjalan", D.fmt_money(outstanding)),
+        ("Outstanding / plafond", D.fmt_pct(outstanding / plafond * 100 if plafond else 0),
+         "makin kecil = makin banyak yang sudah dilunasi"),
+        ("NPL (kol 3-5)", D.npl_badge(df), f"batas sehat di bawah {NPL_BAD:g}%", "", f"kpi-{D.npl_level(npl_p)}"),
+    ])
     if "IS_NPL" not in df.columns:
         st.caption(f"NPL % tidak dapat dihitung: kolom {KOL_COLUMN} tidak ada di data.")
+
+    _trend_section(df)
+    st.write("")
 
     # Kartu per segmen (maks. 4 per baris; kolom otomatis turun baris di layar sempit)
     segs = [s for s in SEGMENT_ORDER if s in set(df["PRODUCT_OWNER"])]
@@ -356,6 +472,9 @@ def page_dashboard():
         fig.update_layout(margin=dict(l=8, r=8, t=40, b=8),
                           legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0, title_text=""))
         ui.show_fig(fig)
+
+    if "IS_NPL" in df.columns:
+        _npl_check(df)
 
     st.divider()
     st.subheader("Detail data (hasil filter)")
