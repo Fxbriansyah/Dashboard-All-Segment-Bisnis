@@ -11,7 +11,7 @@ st.set_page_config(
     page_title="Dashboard Pencairan",
     page_icon=str(LOGO),
     layout="wide",
-    initial_sidebar_state="auto",
+    initial_sidebar_state="collapsed",
 )
 if LOGO.exists():
     st.logo(str(LOGO), size="large")

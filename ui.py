@@ -9,6 +9,16 @@ from config import BRAND, CSS_PATH, STEPS
 # CSS tambahan (dimuat setelah assets/style.css, jadi menimpa gaya yang sama).
 # Hapus blok ini kalau ingin kembali ke tampilan lama.
 EXTRA_CSS = """
+/* Sembunyikan bilah atas Streamlit (Deploy, menu titik tiga, garis warna, status "Running").
+   Header dibiarkan transparan (logo tetap tampil). */
+[data-testid="stToolbar"],[data-testid="stAppDeployButton"],[data-testid="stMainMenu"],
+[data-testid="stDecoration"],[data-testid="stStatusWidget"],#MainMenu,footer{display:none !important}
+[data-testid="stHeader"]{background:transparent !important}
+[data-testid="stMainBlockContainer"]{padding-top:4.5rem !important}
+/* Sidebar dihilangkan; filter ada di bar atas halaman */
+[data-testid="stSidebar"],[data-testid="stSidebarCollapsedControl"],[data-testid="collapsedControl"],
+[data-testid="stExpandSidebarButton"]{display:none !important}
+
 /* NPL: badge berwarna (hijau < NPL_WARN, kuning < NPL_BAD, merah di atasnya) */
 .npl{display:inline-block;padding:2px 9px;border-radius:999px;font-weight:700;font-size:.82em;line-height:1.5;white-space:nowrap}
 .npl-ok{background:#dcfce7;color:#166534}

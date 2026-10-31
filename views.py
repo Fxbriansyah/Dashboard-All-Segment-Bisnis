@@ -335,28 +335,28 @@ def _reset_filters():
         st.session_state[k] = []
 
 
-def _sidebar(df0):
-    with st.sidebar:
-        st.markdown('<div class="side-title">Filter data</div>'
-                    '<div class="side-desc">Berlaku untuk seluruh dashboard.</div>', unsafe_allow_html=True)
-        st.multiselect("Tahun pencairan", sorted(df0["TAHUN PENCAIRAN"].dropna().unique()), key="f_year",
+def _filter_bar(df0):
+    """Bar filter di atas halaman (menggantikan sidebar)."""
+    with st.container(border=True):
+        c1, c2, c3, c4 = st.columns([1, 1, 1, 1.2])
+        c1.multiselect("Tahun pencairan", sorted(df0["TAHUN PENCAIRAN"].dropna().unique()), key="f_year",
                        format_func=D.fmt_tahun, placeholder="Semua")
-        st.multiselect("Bulan pencairan", sorted(df0["BULAN_PENCAIRAN"].dropna().unique()), key="f_month",
+        c2.multiselect("Bulan pencairan", sorted(df0["BULAN_PENCAIRAN"].dropna().unique()), key="f_month",
                        format_func=D.fmt_bulan, placeholder="Semua")
-        st.multiselect("Status loan", sorted(df0["STATUS_LOAN"].unique()), key="f_status",
+        c3.multiselect("Status loan", sorted(df0["STATUS_LOAN"].unique()), key="f_status",
                        format_func=D.fmt_status, placeholder="Semua")
-
         aktif = sum(bool(st.session_state.get(k)) for k in FILTER_KEYS)
         info = f"dari {D.fmt_num(len(df0))} record" + (f" · {aktif} filter aktif" if aktif else "")
-        st.markdown(f'<div class="side-result"><span>Data ditampilkan</span>'
-                    f'<b>{D.fmt_num(len(_apply_filters(df0)))}</b><small>{info}</small></div>', unsafe_allow_html=True)
-        st.button("Reset filter", on_click=_reset_filters, width="stretch", disabled=not aktif)
+        with c4:
+            st.markdown(f'<div class="side-result"><span>Data ditampilkan</span>'
+                        f'<b>{D.fmt_num(len(_apply_filters(df0)))}</b><small>{info}</small></div>',
+                        unsafe_allow_html=True)
+            b1, b2 = st.columns(2)
+            b1.button("Reset filter", on_click=_reset_filters, width="stretch", disabled=not aktif)
+            if b2.button("Upload ulang", width="stretch"):
+                reset_all()
+    st.caption(f"Sumber: {st.session_state.get('file_name', '-')} · kolom identitas sensitif tidak ditampilkan di tabel.")
 
-        st.divider()
-        st.caption(f"Sumber: {st.session_state.get('file_name', '-')}")
-        if st.button("Upload ulang", width="stretch"):
-            reset_all()
-        st.caption("Kolom identitas sensitif tidak ditampilkan di tabel.")
 
 def _apply_filters(df0):
     df, ss = df0, st.session_state
@@ -370,9 +370,6 @@ def page_dashboard():
     df0 = st.session_state.get("data")
     if df0 is None:
         go_to("upload")
-    _sidebar(df0)
-    df = _apply_filters(df0)
-
     ts = st.session_state.get("processed_at")
     left, right = st.columns([3, 1])
     left.markdown('<div class="title-card"><div class="page-title">Dashboard Pencairan</div>'
@@ -380,8 +377,10 @@ def page_dashboard():
     right.markdown(f'<div class="chip">Data diproses<b>{ts.strftime("%d %b %Y %H:%M") if ts else "-"}</b></div>',
                    unsafe_allow_html=True)
     st.write("")
+    _filter_bar(df0)
+    df = _apply_filters(df0)
     if df.empty:
-        st.info("Tidak ada data untuk filter ini. Ubah atau reset filter di sidebar.")
+        st.info("Tidak ada data untuk filter ini. Ubah atau reset filter di atas.")
         return
 
     plafond, outstanding = df["PLAFOND"].sum(), df["OUTSTANDING"].sum()
