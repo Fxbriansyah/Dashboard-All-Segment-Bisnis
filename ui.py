@@ -12,12 +12,14 @@ EXTRA_CSS = """
 /* Sembunyikan bilah atas Streamlit (Deploy, menu titik tiga, garis warna, status "Running").
    Header dibiarkan transparan (logo tetap tampil) dan tidak menangkap klik, supaya tombol di bawahnya bisa diklik.
    Tombol buka/tutup sidebar dikecualikan supaya tetap bisa diklik. */
-[data-testid="stToolbar"],[data-testid="stAppDeployButton"],[data-testid="stMainMenu"],
+[data-testid="stToolbarActions"],[data-testid="stAppDeployButton"],[data-testid="stMainMenu"],
 [data-testid="stDecoration"],[data-testid="stStatusWidget"],#MainMenu,footer{display:none !important}
 [data-testid="stHeader"]{background:transparent !important;pointer-events:none !important}
 [data-testid="stMainBlockContainer"]{padding-top:4.5rem !important}
 [data-testid="stSidebarCollapsedControl"],[data-testid="stExpandSidebarButton"],
-[data-testid="stSidebarCollapseButton"]{pointer-events:auto !important}
+[data-testid="stSidebarCollapseButton"],[data-testid="stSidebarCollapsedControl"] *,
+[data-testid="stExpandSidebarButton"] *{pointer-events:auto !important}
+[data-testid="stToolbar"]{background:transparent !important}
 
 /* NPL: badge berwarna (hijau < NPL_WARN, kuning < NPL_BAD, merah di atasnya) */
 .npl{display:inline-block;padding:2px 9px;border-radius:999px;font-weight:700;font-size:.82em;line-height:1.5;white-space:nowrap}

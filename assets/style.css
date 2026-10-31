@@ -159,7 +159,7 @@ section[data-testid="stSidebar"] label p { font-size: .82rem; font-weight: 600; 
 .side-result b { font-size: 1.3rem; font-weight: 800; color: var(--brand); font-variant-numeric: tabular-nums; }
 .side-result small { font-size: .74rem; color: var(--muted); }
 
-[data-testid="stToolbar"],
+[data-testid="stToolbarActions"],
 [data-testid="stHeaderActionElements"] { display: none !important; }
 
 /* Rapatkan jarak atas halaman */
