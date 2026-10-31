@@ -57,8 +57,21 @@ HIDE_SIDEBAR_CSS = """
 """
 
 
+# Di dashboard sidebar dipaksa selalu terbuka (tidak bergantung pada tombol buka/tutup bawaan Streamlit,
+# yang struktur HTML-nya berbeda antarversi). Di layar sempit (HP) tetap memakai perilaku bawaan.
+SHOW_SIDEBAR_CSS = """
+@media (min-width: 769px){
+  [data-testid="stSidebar"]{transform:none !important;margin-left:0 !important;visibility:visible !important;
+    width:21rem !important;min-width:21rem !important;max-width:21rem !important}
+  [data-testid="stSidebarCollapseButton"],[data-testid="stSidebarCollapsedControl"],
+  [data-testid="stExpandSidebarButton"]{display:none !important}
+}
+"""
+
+
 def inject_css(show_sidebar=False):
-    css = CSS_PATH.read_text(encoding="utf-8") + EXTRA_CSS + ("" if show_sidebar else HIDE_SIDEBAR_CSS)
+    css = (CSS_PATH.read_text(encoding="utf-8") + EXTRA_CSS
+           + (SHOW_SIDEBAR_CSS if show_sidebar else HIDE_SIDEBAR_CSS))
     st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
 
 
