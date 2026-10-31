@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
 
 import hashlib
@@ -266,19 +267,39 @@ def _npl_check(df):
         st.dataframe(prod_view, hide_index=True, width="stretch")
 
 
-def _trend_chart(d, x, order, metric, segs, xfmt=None, date_axis=False, tickangle=0):
-    """Stacked bar per segmen. x = kolom sumbu X; metric = 'Plafond' (nominal) atau 'NoA' (jumlah rekening)."""
+def _trend_chart(d, x, order, metric, segs, kind="Garis", xfmt=None, date_axis=False, tickangle=0):
+    """Tren per segmen. kind = 'Garis' (satu garis per segmen + garis putus-putus total) atau 'Kolom' (bertumpuk).
+    metric = 'Plafond' (nominal) atau 'NoA' (jumlah rekening)."""
     g = d.groupby([x, "PRODUCT_OWNER"], as_index=False).agg(val=("PLAFOND", "sum" if metric == "Plafond" else "size"))
-    cats = {"PRODUCT_OWNER": segs} if date_axis else {"PRODUCT_OWNER": segs, x: order}
-    fig = px.bar(g, x=x, y="val", color="PRODUCT_OWNER", category_orders=cats,
-                 color_discrete_map={n: SEGMENT_THEME.get(n, DEFAULT_THEME)["color"] for n in segs})
+    color_of = {n: SEGMENT_THEME.get(n, DEFAULT_THEME)["color"] for n in segs}
     unit = "Rp %{y:,.0f}" if metric == "Plafond" else "%{y:,.0f} rekening"
-    fig.update_traces(hovertemplate=f"%{{fullData.name}}: {unit}<extra></extra>")   # judul hover = nilai sumbu X
-    fig.update_layout(bargap=0.3, barmode="stack", hovermode="x unified")
+    hover = f"%{{fullData.name}}: {unit}<extra></extra>"   # judul hover = nilai sumbu X
+
+    if kind == "Garis":
+        idx = list(pd.date_range(min(order), max(order))) if date_axis else list(order)   # periode kosong = 0
+        p = (g.pivot_table(index=x, columns="PRODUCT_OWNER", values="val", aggfunc="sum")
+             .reindex(idx).fillna(0))
+        fig = go.Figure()
+        for n in segs:
+            if n in p.columns:
+                fig.add_trace(go.Scatter(x=p.index, y=p[n], name=n, mode="lines+markers", hovertemplate=hover,
+                                         line=dict(color=color_of[n], width=2.5), marker=dict(size=6)))
+        total = p.sum(axis=1)
+        fig.add_trace(go.Scatter(x=p.index, y=total, name="Total", mode="lines", hovertemplate=hover,
+                                 line=dict(color="#334155", width=2, dash="dot")))
+        top = total.max()
+    else:
+        cats = {"PRODUCT_OWNER": segs} if date_axis else {"PRODUCT_OWNER": segs, x: order}
+        fig = px.bar(g, x=x, y="val", color="PRODUCT_OWNER", category_orders=cats, color_discrete_map=color_of)
+        fig.update_traces(hovertemplate=hover)
+        fig.update_layout(bargap=0.3, barmode="stack")
+        top = g.groupby(x)["val"].sum().max()
+
+    fig.update_layout(hovermode="x unified")
     fig.update_xaxes(type="date" if date_axis else "category", tickangle=tickangle,
                      **({"tickformat": "%d %b", "hoverformat": "%d %b %Y"} if date_axis else {}))
     if metric == "Plafond":
-        ui.rupiah_axis(fig, g.groupby(x)["val"].sum().max())
+        ui.rupiah_axis(fig, top)
     ui.style_fig(fig, 330)
     # legenda di atas grafik (di bawah bertabrakan dengan label sumbu X yang miring)
     fig.update_layout(margin=dict(l=8, r=8, t=44, b=8),
@@ -290,8 +311,9 @@ def _trend_chart(d, x, order, metric, segs, xfmt=None, date_axis=False, tickangl
 def _trend_section(df):
     """Tren pencairan harian / bulanan / tahunan, dipecah per segmen."""
     st.subheader("Tren pencairan")
-    metric = st.radio("Ukuran", ["Plafond", "NoA"], horizontal=True, key="trend_metric",
-                      label_visibility="collapsed")
+    r1, r2, _ = st.columns([1.2, 1.2, 3])
+    metric = r1.radio("Ukuran", ["Plafond", "NoA"], horizontal=True, key="trend_metric")
+    kind = r2.radio("Tampilan", ["Garis", "Kolom"], horizontal=True, key="trend_kind")
     segs = [s for s in SEGMENT_ORDER if s in set(df["PRODUCT_OWNER"])]
     segs += [s for s in df["PRODUCT_OWNER"].unique() if s not in segs]
     t_day, t_month, t_year = st.tabs(["Harian", "Bulanan", "Tahunan"])
@@ -304,7 +326,7 @@ def _trend_section(df):
             d["TANGGAL"] = d["TANGGAL_PENCAIRAN"].dt.normalize()
             days = sorted(d["TANGGAL"].unique())[-TREND_DAYS:]
             d = d[d["TANGGAL"].isin(days)]
-            _trend_chart(d, "TANGGAL", days, metric, segs, xfmt="%d %b %Y", date_axis=True)
+            _trend_chart(d, "TANGGAL", days, metric, segs, kind, xfmt="%d %b %Y", date_axis=True)
             n_kosong = int(df["TANGGAL_PENCAIRAN"].isna().sum())
             st.caption(f"Menampilkan {len(days)} hari pencairan terakhir (maks. {TREND_DAYS})."
                        + (f" {D.fmt_num(n_kosong)} baris tanpa tanggal valid tidak ikut." if n_kosong else ""))
@@ -319,7 +341,7 @@ def _trend_section(df):
             d = d[d["_p"].isin(periods)]
             label = lambda p: f"{D.fmt_bulan(p % 100)[:3]} {p // 100}"
             d["BULAN"] = d["_p"].map(label)
-            _trend_chart(d, "BULAN", [label(p) for p in periods], metric, segs,
+            _trend_chart(d, "BULAN", [label(p) for p in periods], metric, segs, kind,
                          tickangle=-45 if len(periods) > 12 else 0)
             st.caption(f"Menampilkan {len(periods)} bulan terakhir (maks. {TREND_MONTHS}).")
 
@@ -330,7 +352,7 @@ def _trend_section(df):
         else:
             years = sorted(d["TAHUN PENCAIRAN"].astype(int).unique())
             d["TAHUN"] = d["TAHUN PENCAIRAN"].astype(int).astype(str)
-            _trend_chart(d, "TAHUN", [str(y) for y in years], metric, segs)
+            _trend_chart(d, "TAHUN", [str(y) for y in years], metric, segs, kind)
 
 
 def _reset_filters():
