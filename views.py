@@ -208,7 +208,8 @@ def segment_card(df, segment):
     s = df[df["PRODUCT_OWNER"] == segment]
     plafond = s["PLAFOND"].sum()
     names = list(s.groupby("GROUP_PRODUCT")["PLAFOND"].sum().sort_values(ascending=False).index)
-    with st.container(border=True):
+    key = "tile_seg_" + "".join(ch if ch.isalnum() else "_" for ch in segment)
+    with st.container(border=False, key=key):
         st.markdown(
             f'<div class="seg-head" style="--seg-bg:{th["bg"]};--seg-border:{th["border"]};--seg-color:{th["color"]}">'
             f'<span>{th["icon"]}</span>{segment}</div>'
@@ -364,7 +365,7 @@ def _reset_filters():
 def _filter_bar(df0, compact=False):
     """Bar filter di atas halaman (menggantikan sidebar). compact=True: dilipat dalam expander (mode Ringkas)."""
     caption = f"Sumber: {st.session_state.get('file_name', '-')} · kolom identitas sensitif tidak ditampilkan di tabel."
-    with (st.expander("Filter & pengaturan") if compact else st.container(border=True)):
+    with (st.expander("Filter & pengaturan") if compact else st.container(border=False, key="tile_filter")):
         c1, c2, c3, c4 = st.columns([1, 1, 1, 1.2])
         c1.multiselect("Tahun pencairan", sorted(df0["TAHUN PENCAIRAN"].dropna().unique()), key="f_year",
                        format_func=D.fmt_tahun, placeholder="Semua")
@@ -396,14 +397,20 @@ def _apply_filters(df0):
     return df
 
 
-RINGKAS_CSS = """
+THEME_CSS = """
 .stApp{background:#19c98f !important}
 [data-testid="stMainBlockContainer"]{padding-top:3.8rem !important;padding-bottom:1rem !important;max-width:100% !important}
-[data-testid="stVerticalBlock"]{gap:.7rem !important}
 [class*="st-key-tile_"],[data-testid="stExpander"]{background:#fff !important;border:0 !important;
   border-radius:20px !important;box-shadow:none !important;box-sizing:border-box}
 [class*="st-key-tile_"]{padding:12px 14px !important}
 [data-testid="stExpander"] details{border:0 !important}
+[data-testid="stHeading"] h1,[data-testid="stHeading"] h2,[data-testid="stHeading"] h3{color:#06382c !important}
+[data-testid="stCaptionContainer"]{color:#06382c !important}
+[class*="st-key-tile_"] [data-testid="stHeading"] h3,[class*="st-key-tile_"] [data-testid="stCaptionContainer"]{color:#0f172a !important}
+"""
+
+RINGKAS_CSS = """
+[data-testid="stVerticalBlock"]{gap:.7rem !important}
 .tile-title{font-weight:800;font-size:14px;color:#0f172a;text-align:center;margin-bottom:2px}
 .tile-big{font-size:30px;font-weight:800;color:#0f172a;text-align:center;line-height:1.2;margin-top:6px}
 .tile-big .npl{font-size:.8em;padding:2px 18px}
@@ -544,6 +551,7 @@ def page_dashboard():
     if df0 is None:
         go_to("upload")
     ts = st.session_state.get("processed_at")
+    st.markdown(f"<style>{THEME_CSS}</style>", unsafe_allow_html=True)
     st.session_state.setdefault("view_mode", "Ringkas")
     left, mid, right = st.columns([3, 1.1, 1])
     mid.radio("Tampilan", ["Ringkas", "Rinci"], horizontal=True, key="view_mode", label_visibility="collapsed")
@@ -575,7 +583,8 @@ def page_dashboard():
     if "IS_NPL" not in df.columns:
         st.caption(f"NPL % tidak dapat dihitung: kolom {KOL_COLUMN} tidak ada di data.")
 
-    _trend_section(df)
+    with st.container(border=False, key="tile_trend"):
+        _trend_section(df)
     st.write("")
 
     # Kartu per segmen (maks. 4 per baris; kolom otomatis turun baris di layar sempit)
@@ -588,13 +597,11 @@ def page_dashboard():
                 with col:
                     segment_card(df, seg)
 
-    st.divider()
-    
     with st.container(key="charts"):
         c1, c2, c3 = st.columns(3)
         with c1:
             st.subheader("Plafond per segmen")
-            with st.container(border=True, height=CHART_BOX):
+            with st.container(border=False, height=CHART_BOX, key="tile_c1"):
                 pf = (df.groupby("PRODUCT_OWNER", as_index=False)["PLAFOND"].sum()
                       .sort_values("PLAFOND", ascending=False))
                 fig = px.bar(pf, x="PRODUCT_OWNER", y="PLAFOND", color="PRODUCT_OWNER",
@@ -608,7 +615,7 @@ def page_dashboard():
                 ui.show_fig(ui.style_fig(fig, CHART_BOX - 48))
         with c2:
             st.subheader("Outstanding per segmen")
-            with st.container(border=True, height=CHART_BOX):
+            with st.container(border=False, height=CHART_BOX, key="tile_c2"):
                 comp = df.groupby("PRODUCT_OWNER")["OUTSTANDING"].sum().sort_values(ascending=False)
                 top = comp.max() or 1
                 rows = "".join(
@@ -619,7 +626,7 @@ def page_dashboard():
                 st.markdown(f'<div class="hbars">{rows}</div>', unsafe_allow_html=True)
         with c3:
             st.subheader("Outstanding per group produk")
-            with st.container(border=True, height=CHART_BOX):
+            with st.container(border=False, height=CHART_BOX, key="tile_c3"):
                 po = (df.groupby("GROUP_PRODUCT", as_index=False)["OUTSTANDING"].sum()
                       .sort_values("OUTSTANDING", ascending=False))
                 cmap = {n: PRODUCT_COLORS[i % len(PRODUCT_COLORS)] for i, n in enumerate(po["GROUP_PRODUCT"])}
@@ -638,7 +645,7 @@ def page_dashboard():
     long = pv.melt(id_vars="PRODUCT_OWNER", var_name="Jenis", value_name="Nilai")
     long["Jenis"] = long["Jenis"].str.capitalize()   # Plafond / Outstanding
     long["Label"] = long["Nilai"].map(ui.compact_rp)
-    with st.container(border=True):
+    with st.container(border=False, key="tile_pv"):
         fig = px.bar(long, x="PRODUCT_OWNER", y="Nilai", color="Jenis", barmode="group", text="Label",
                      category_orders={"PRODUCT_OWNER": list(pv["PRODUCT_OWNER"]), "Jenis": ["Plafond", "Outstanding"]},
                      color_discrete_map={"Plafond": BRAND, "Outstanding": BRAND_LIGHT})
@@ -654,20 +661,20 @@ def page_dashboard():
     if "IS_NPL" in df.columns:
         _npl_check(df)
 
-    st.divider()
-    st.subheader("Detail data (hasil filter)")
-    cols = [c for c in SAFE_DETAIL_COLUMNS if c in df.columns]
-    detail = df[cols]
-    max_rows = st.number_input("Jumlah baris ditampilkan", min_value=10, max_value=5000, value=100, step=10)
-    st.dataframe(
-        detail.head(max_rows), width="stretch", hide_index=True,
-        column_config={
-            "TANGGAL_PENCAIRAN": st.column_config.DateColumn("TANGGAL_PENCAIRAN", format="DD/MM/YYYY"),
-            "TAHUN PENCAIRAN": st.column_config.NumberColumn("TAHUN PENCAIRAN", format="%d"),
-            "BULAN_PENCAIRAN": st.column_config.NumberColumn("BULAN_PENCAIRAN", format="%d"),
-            "PLAFOND": st.column_config.NumberColumn("PLAFOND", format="localized"),
-            "OUTSTANDING": st.column_config.NumberColumn("OUTSTANDING", format="localized"),
-        })
-    st.download_button("Download hasil filter (CSV)", detail.to_csv(index=False).encode("utf-8-sig"),
-                       file_name="hasil_filter_dashboard.csv", mime="text/csv")
-    st.caption(f"{D.fmt_num(len(df))} dari {D.fmt_num(len(df0))} record setelah filter.")
+    with st.container(border=False, key="tile_detail"):
+        st.subheader("Detail data (hasil filter)")
+        cols = [c for c in SAFE_DETAIL_COLUMNS if c in df.columns]
+        detail = df[cols]
+        max_rows = st.number_input("Jumlah baris ditampilkan", min_value=10, max_value=5000, value=100, step=10)
+        st.dataframe(
+            detail.head(max_rows), width="stretch", hide_index=True,
+            column_config={
+                "TANGGAL_PENCAIRAN": st.column_config.DateColumn("TANGGAL_PENCAIRAN", format="DD/MM/YYYY"),
+                "TAHUN PENCAIRAN": st.column_config.NumberColumn("TAHUN PENCAIRAN", format="%d"),
+                "BULAN_PENCAIRAN": st.column_config.NumberColumn("BULAN_PENCAIRAN", format="%d"),
+                "PLAFOND": st.column_config.NumberColumn("PLAFOND", format="localized"),
+                "OUTSTANDING": st.column_config.NumberColumn("OUTSTANDING", format="localized"),
+            })
+        st.download_button("Download hasil filter (CSV)", detail.to_csv(index=False).encode("utf-8-sig"),
+                           file_name="hasil_filter_dashboard.csv", mime="text/csv")
+        st.caption(f"{D.fmt_num(len(df))} dari {D.fmt_num(len(df0))} record setelah filter.")
