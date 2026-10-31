@@ -29,8 +29,12 @@ EXTRA_CSS = """
 .seg-stats>div>span,.prod-meta>span{color:#475569 !important}
 .seg-stats .npl{font-size:.9em}
 
-/* Daftar produk: ringkas (2 baris per produk), tanpa scroll karena hanya 5 teratas */
-.prod-list{max-height:none !important;overflow:visible !important}
+/* Daftar produk: tinggi mengikuti isi (CSS lama memberi tinggi tetap + scroll, yang membuat kartu saling menimpa) */
+.prod-list,.prod-list.plist{height:auto !important;min-height:0 !important;max-height:none !important;
+  overflow:visible !important;flex:none !important}
+.prod-list .prod{flex:none !important}
+[data-testid="stExpander"] .prod-list{margin:0 !important}
+[data-testid="stExpander"] details{overflow:visible !important}
 .prod-meta{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:4px;font-size:12px}
 .prod-meta b{font-weight:700;color:#0f172a}
 """
