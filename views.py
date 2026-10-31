@@ -267,7 +267,8 @@ def _npl_check(df):
         st.dataframe(prod_view, hide_index=True, width="stretch")
 
 
-def _trend_chart(d, x, order, metric, segs, kind="Garis", xfmt=None, date_axis=False, tickangle=0):
+def _trend_chart(d, x, order, metric, segs, kind="Garis", xfmt=None, date_axis=False, tickangle=0,
+                 height=330, tmargin=44):
     """Tren per segmen. kind = 'Garis' (satu garis per segmen + garis putus-putus total) atau 'Kolom' (bertumpuk).
     metric = 'Plafond' (nominal) atau 'NoA' (jumlah rekening)."""
     g = d.groupby([x, "PRODUCT_OWNER"], as_index=False).agg(val=("PLAFOND", "sum" if metric == "Plafond" else "size"))
@@ -300,11 +301,11 @@ def _trend_chart(d, x, order, metric, segs, kind="Garis", xfmt=None, date_axis=F
                      **({"tickformat": "%d %b", "hoverformat": "%d %b %Y"} if date_axis else {}))
     if metric == "Plafond":
         ui.rupiah_axis(fig, top)
-    ui.style_fig(fig, 330)
+    ui.style_fig(fig, height)
     # legenda di atas grafik (di bawah bertabrakan dengan label sumbu X yang miring)
-    fig.update_layout(margin=dict(l=8, r=8, t=44, b=8),
+    fig.update_layout(margin=dict(l=8, r=8, t=tmargin, b=8),
                       legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0,
-                                  font=dict(size=12), title_text=""))
+                                  font=dict(size=12 if tmargin >= 40 else 10), title_text=""))
     ui.show_fig(fig)
 
 
@@ -360,9 +361,10 @@ def _reset_filters():
         st.session_state[k] = []
 
 
-def _filter_bar(df0):
-    """Bar filter di atas halaman (menggantikan sidebar)."""
-    with st.container(border=True):
+def _filter_bar(df0, compact=False):
+    """Bar filter di atas halaman (menggantikan sidebar). compact=True: dilipat dalam expander (mode Ringkas)."""
+    caption = f"Sumber: {st.session_state.get('file_name', '-')} · kolom identitas sensitif tidak ditampilkan di tabel."
+    with (st.expander("Filter & pengaturan") if compact else st.container(border=True)):
         c1, c2, c3, c4 = st.columns([1, 1, 1, 1.2])
         c1.multiselect("Tahun pencairan", sorted(df0["TAHUN PENCAIRAN"].dropna().unique()), key="f_year",
                        format_func=D.fmt_tahun, placeholder="Semua")
@@ -380,7 +382,10 @@ def _filter_bar(df0):
             b1.button("Reset filter", on_click=_reset_filters, width="stretch", disabled=not aktif)
             if b2.button("Upload ulang", width="stretch"):
                 reset_all()
-    st.caption(f"Sumber: {st.session_state.get('file_name', '-')} · kolom identitas sensitif tidak ditampilkan di tabel.")
+        if compact:
+            st.caption(caption)
+    if not compact:
+        st.caption(caption)
 
 
 def _apply_filters(df0):
@@ -391,21 +396,169 @@ def _apply_filters(df0):
     return df
 
 
+RINGKAS_CSS = """
+.stApp{background:#19c98f !important}
+[data-testid="stMainBlockContainer"]{padding-top:3.2rem !important;padding-bottom:1rem !important;max-width:100% !important}
+[data-testid="stVerticalBlock"]{gap:.7rem !important}
+[data-testid="stVerticalBlockBorderWrapper"],[data-testid="stExpander"]{background:#fff !important;border:0 !important;
+  border-radius:20px !important;box-shadow:none !important}
+[data-testid="stExpander"] details{border:0 !important}
+.tile-title{font-weight:800;font-size:14px;color:#0f172a;text-align:center;margin-bottom:2px}
+.tile-big{font-size:30px;font-weight:800;color:#0f172a;text-align:center;line-height:1.2;margin-top:6px}
+.tile-big .npl{font-size:.8em;padding:2px 18px}
+.tile-sub{text-align:center;font-size:11px;color:#64748b;margin-top:2px}
+table.mini{width:100%;border-collapse:collapse;font-size:12px;margin-top:4px}
+table.mini th{text-align:left;color:#475569;font-weight:700;border-bottom:1px solid #cbd5e1;padding:4px 6px}
+table.mini td{padding:5px 6px;border-bottom:1px solid #f1f5f9;color:#0f172a}
+table.mini .num{text-align:right;white-space:nowrap}
+table.mini tr.total td{font-weight:800;border-top:1px solid #cbd5e1;border-bottom:0}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px}
+"""
+
+
+def _badge(p):
+    return f'<span class="npl npl-{D.npl_level(p)}">{"-" if p is None else D.fmt_pct(p)}</span>'
+
+
+def _mini_table(headers, rows, total=None):
+    """Tabel HTML kecil. headers: [teks]; rows/total: [html sel]; kolom pertama rata kiri, sisanya rata kanan."""
+    def tr(cells, cls=""):
+        return f'<tr class="{cls}">' + "".join(
+            f'<td class="{"num" if i else ""}">{c}</td>' for i, c in enumerate(cells)) + "</tr>"
+    head = "".join(f'<th class="{"num" if i else ""}">{h}</th>' for i, h in enumerate(headers))
+    body = "".join(tr(r) for r in rows) + (tr(total, "total") if total else "")
+    return f'<table class="mini"><tr>{head}</tr>{body}</table>'
+
+
+def _tile_title(text):
+    st.markdown(f'<div class="tile-title">{text}</div>', unsafe_allow_html=True)
+
+
+def _product_stats(df):
+    """Per group produk: plafond, outstanding, NPL % (None kalau kolom kolektabilitas tidak ada)."""
+    has = "IS_NPL" in df.columns
+    d = df.assign(_n=df["OUTSTANDING"].where(df["IS_NPL"], 0) if has else 0.0)
+    t = d.groupby("GROUP_PRODUCT").agg(plafond=("PLAFOND", "sum"), outstanding=("OUTSTANDING", "sum"),
+                                       npl=("_n", "sum")).reset_index()
+    t["pct"] = (t["npl"] / t["outstanding"] * 100).where(t["outstanding"] > 0, 0.0) if has else None
+    return t
+
+
+def _dashboard_ringkas(df):
+    """Tampilan padat satu layar (cocok untuk screenshot): KPI, tren, ringkasan segmen, 4 tile kecil."""
+    st.markdown(f"<style>{RINGKAS_CSS}</style>", unsafe_allow_html=True)
+    H_KPI, H_ROW = 124, 270
+    plafond, outstanding = df["PLAFOND"].sum(), df["OUTSTANDING"].sum()
+    segs = [x for x in SEGMENT_ORDER if x in set(df["PRODUCT_OWNER"])]
+    segs += [x for x in df["PRODUCT_OWNER"].unique() if x not in segs]
+    color = lambda n: SEGMENT_THEME.get(n, DEFAULT_THEME)["color"]
+
+    # --- Baris 1: KPI ---
+    kpi = [("Total NoA", D.fmt_num(len(df)), "jumlah rekening pencairan"),
+           ("Total plafond", _rp(plafond), "total yang dicairkan"),
+           ("Total outstanding", _rp(outstanding), "sisa pokok yang berjalan"),
+           ("Outstanding / plafond", D.fmt_pct(outstanding / plafond * 100 if plafond else 0), "dari total plafond"),
+           ("NPL (kol 3-5)", _badge(D.npl_pct(df)), f"batas sehat di bawah {NPL_BAD:g}%")]
+    for col, (t, v, sub) in zip(st.columns(5), kpi):
+        with col, st.container(border=True, height=H_KPI):
+            st.markdown(f'<div class="tile-title">{t}</div><div class="tile-big">{v}</div>'
+                        f'<div class="tile-sub">{sub}</div>', unsafe_allow_html=True)
+
+    # --- Baris 2: tren bulanan + ringkasan per segmen ---
+    a, b = st.columns([2, 1.2])
+    with a, st.container(border=True, height=H_ROW):
+        _tile_title("Tren pencairan bulanan (plafond)")
+        d = df.dropna(subset=["TAHUN PENCAIRAN", "BULAN_PENCAIRAN"]).copy()
+        if d.empty:
+            st.info("Tidak ada data bulan pencairan.")
+        else:
+            d["_p"] = d["TAHUN PENCAIRAN"].astype(int) * 100 + d["BULAN_PENCAIRAN"].astype(int)
+            periods = sorted(d["_p"].unique())[-12:]
+            d = d[d["_p"].isin(periods)]
+            label = lambda p: f"{D.fmt_bulan(p % 100)[:3]} {p // 100}"
+            d["BULAN"] = d["_p"].map(label)
+            _trend_chart(d, "BULAN", [label(p) for p in periods], "Plafond", segs, "Garis",
+                         height=H_ROW - 54, tmargin=26)
+    with b, st.container(border=True, height=H_ROW):
+        _tile_title("Ringkasan per segmen")
+        rows = []
+        for n in segs:
+            sdf = df[df["PRODUCT_OWNER"] == n]
+            rows.append([f'<i class="dot" style="background:{color(n)}"></i>{html.escape(n)}', D.fmt_num(len(sdf)),
+                         _rp(sdf["PLAFOND"].sum()), _rp(sdf["OUTSTANDING"].sum()), _badge(D.npl_pct(sdf))])
+        st.markdown(_mini_table(["Segmen", "NoA", "Plafond", "Outstanding", "NPL"], rows,
+                                ["Total", D.fmt_num(len(df)), _rp(plafond), _rp(outstanding),
+                                 _badge(D.npl_pct(df))]), unsafe_allow_html=True)
+
+    # --- Baris 3: 4 tile kecil ---
+    c1, c2, c3, c4 = st.columns(4)
+    with c1, st.container(border=True, height=H_ROW):
+        _tile_title("Pencairan 7 hari terakhir (plafond)")
+        w = df.dropna(subset=["TANGGAL_PENCAIRAN"])
+        if w.empty:
+            st.info("Tidak ada tanggal pencairan valid.")
+        else:
+            w = w.assign(_t=w["TANGGAL_PENCAIRAN"].dt.normalize())
+            days = pd.date_range(w["_t"].max() - pd.Timedelta(days=6), w["_t"].max())
+            v = w.groupby("_t")["PLAFOND"].sum().reindex(days).fillna(0)
+            fig = go.Figure(go.Scatter(
+                x=days, y=v.values, mode="lines+markers+text", text=[ui.compact_rp(x) for x in v.values],
+                textposition="top center", textfont=dict(size=10), fill="tozeroy", fillcolor="rgba(147,197,253,.55)",
+                line=dict(color=BRAND, width=2.5, shape="spline"), marker=dict(size=7, color="#0f172a"),
+                hovertemplate="%{x|%d %b %Y}<br>Rp %{y:,.0f}<extra></extra>"))
+            fig.update_xaxes(tickformat="%d %b", tickmode="array", tickvals=days)
+            fig.update_yaxes(visible=False, range=[0, max(v.max() * 1.3, 1)])
+            ui.show_fig(ui.style_fig(fig, H_ROW - 54))
+    ps = _product_stats(df)
+    with c2, st.container(border=True, height=H_ROW):
+        _tile_title("Top 5 produk (plafond)")
+        top = ps.sort_values("plafond", ascending=False).head(5)
+        st.markdown(_mini_table(["Produk", "Plafond", "NPL"], [
+            [html.escape(str(r.GROUP_PRODUCT)), _rp(r.plafond), _badge(r.pct)] for r in top.itertuples()]),
+            unsafe_allow_html=True)
+    with c3, st.container(border=True, height=H_ROW):
+        _tile_title("NPL tertinggi (produk)")
+        if "IS_NPL" not in df.columns:
+            st.info(f"Kolom {KOL_COLUMN} tidak ada di data.")
+        else:
+            risk = ps[ps["outstanding"] > 0].sort_values("pct", ascending=False).head(5)
+            st.markdown(_mini_table(["Produk", "Outstanding", "NPL"], [
+                [html.escape(str(r.GROUP_PRODUCT)), _rp(r.outstanding), _badge(r.pct)] for r in risk.itertuples()]),
+                unsafe_allow_html=True)
+    with c4, st.container(border=True, height=H_ROW):
+        _tile_title("Outstanding per segmen")
+        o = df.groupby("PRODUCT_OWNER", as_index=False)["OUTSTANDING"].sum()
+        fig = px.pie(o, names="PRODUCT_OWNER", values="OUTSTANDING", hole=0.55, color="PRODUCT_OWNER",
+                     color_discrete_map={n: color(n) for n in segs}, category_orders={"PRODUCT_OWNER": segs})
+        fig.update_traces(textinfo="percent", textfont_size=10, sort=False,
+                          hovertemplate="%{label}<br>Rp %{value:,.0f}<extra></extra>")
+        ui.style_fig(fig, H_ROW - 54)
+        fig.update_layout(showlegend=True, legend=dict(orientation="h", yanchor="top", y=-0.02, xanchor="center",
+                                                       x=0.5, font=dict(size=9), title_text=""))
+        ui.show_fig(fig)
+
+
 def page_dashboard():
     df0 = st.session_state.get("data")
     if df0 is None:
         go_to("upload")
     ts = st.session_state.get("processed_at")
-    left, right = st.columns([3, 1])
+    st.session_state.setdefault("view_mode", "Ringkas")
+    left, mid, right = st.columns([3, 1.1, 1])
+    mid.radio("Tampilan", ["Ringkas", "Rinci"], horizontal=True, key="view_mode", label_visibility="collapsed")
+    ringkas = st.session_state["view_mode"] == "Ringkas"
     left.markdown('<div class="title-card"><div class="page-title">Dashboard Pencairan</div>'
                   '<div class="page-desc">Semua segmen bisnis</div></div>', unsafe_allow_html=True)
     right.markdown(f'<div class="chip">Data diproses<b>{ts.strftime("%d %b %Y %H:%M") if ts else "-"}</b></div>',
                    unsafe_allow_html=True)
     st.write("")
-    _filter_bar(df0)
+    _filter_bar(df0, compact=ringkas)
     df = _apply_filters(df0)
     if df.empty:
         st.info("Tidak ada data untuk filter ini. Ubah atau reset filter di atas.")
+        return
+    if ringkas:
+        _dashboard_ringkas(df)
         return
 
     plafond, outstanding = df["PLAFOND"].sum(), df["OUTSTANDING"].sum()
