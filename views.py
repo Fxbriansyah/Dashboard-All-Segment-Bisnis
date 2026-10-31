@@ -31,7 +31,7 @@ SESSION_KEYS = ["stage", "data", "file_hash", "file_name", "processed_at"]
 FILTER_KEYS = ["f_year", "f_month", "f_status"]
 CHART_BOX = 400   # tinggi kotak chart di baris tiga chart (px)
 LEGEND_TALL = 130   # tinggi kotak legenda produk di chart donut (px); sisanya bisa di-scroll
-TOP_PRODUK = 5   # jumlah produk yang langsung tampil per segmen; sisanya di dalam "Lihat produk lainnya"
+PROD_LIST_H = 315   # tinggi kotak daftar produk per segmen (px, kira-kira 5 produk); sisanya bisa di-scroll
 TREND_MONTHS, TREND_DAYS = 24, 31   # jumlah bulan / hari terakhir yang ditampilkan di grafik tren
 
 
@@ -217,12 +217,9 @@ def segment_card(df, segment):
             f'<div class="wide"><span>Plafond</span><b>{_rp(plafond)}</b></div>'
             f'<div class="wide"><span>NPL (kol 3-5)</span><b>{D.npl_badge(s)}</b></div></div>'
             f'<div class="seg-sub" style="--seg-color:{th["color"]}">Rincian per produk ({len(names)})</div>'
-            f'<div class="prod-list">{_product_rows(s, names[:TOP_PRODUK])}</div>',
+            f'<div class="prod-list" style="height:{PROD_LIST_H}px!important;max-height:{PROD_LIST_H}px!important;'
+            f'overflow-y:auto!important;overflow-x:hidden!important">{_product_rows(s, names)}</div>',
             unsafe_allow_html=True)
-        if len(names) > TOP_PRODUK:
-            with st.expander(f"Lihat {len(names) - TOP_PRODUK} produk lainnya"):
-                st.markdown(f'<div class="prod-list">{_product_rows(s, names[TOP_PRODUK:])}</div>',
-                            unsafe_allow_html=True)
         st.markdown(f'<div class="seg-sub" style="--seg-color:{th["color"]}">Komposisi group produk</div>',
                     unsafe_allow_html=True)
         produk = s.groupby("GROUP_PRODUCT").size().rename("Jumlah").reset_index().sort_values("Jumlah", ascending=False)

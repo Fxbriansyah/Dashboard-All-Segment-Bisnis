@@ -39,12 +39,11 @@ EXTRA_CSS = """
 .seg-stats>div>span,.prod-meta>span{color:#475569 !important}
 .seg-stats .npl{font-size:.9em}
 
-/* Daftar produk: tinggi mengikuti isi (CSS lama memberi tinggi tetap + scroll, yang membuat kartu saling menimpa) */
-.prod-list,.prod-list.plist{height:auto !important;min-height:0 !important;max-height:none !important;
-  overflow:visible !important;flex:none !important}
+/* Daftar produk: tinggi tetap (diatur PROD_LIST_H di views.py) + scroll, jadi semua kartu segmen sejajar */
+.prod-list{flex:none !important;scrollbar-width:thin;scrollbar-color:#cbd5e1 transparent}
+.prod-list::-webkit-scrollbar{width:6px}
+.prod-list::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:6px}
 .prod-list .prod{flex:none !important}
-[data-testid="stExpander"] .prod-list{margin:0 !important}
-[data-testid="stExpander"] details{overflow:visible !important}
 .prod-meta{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:4px;font-size:12px}
 .prod-meta b{font-weight:700;color:#0f172a}
 """
