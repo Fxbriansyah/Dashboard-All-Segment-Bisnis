@@ -668,7 +668,7 @@ def page_dashboard():
         st.dataframe(
             detail.head(max_rows), width="stretch", hide_index=True,
             column_config={
-                "OPEN_DATE": st.column_config.DateColumn("OPEN_DATE", format="dd/mm/yyyy"),
+                "OPEN_DATE": st.column_config.DateColumn("OPEN_DATE", format="%Y%m%d"),
                 "TAHUN PENCAIRAN": st.column_config.NumberColumn("TAHUN PENCAIRAN", format="%d"),
                 "BULAN_PENCAIRAN": st.column_config.NumberColumn("BULAN_PENCAIRAN", format="%d"),
                 "PLAFOND": st.column_config.NumberColumn("PLAFOND", format="localized"),
