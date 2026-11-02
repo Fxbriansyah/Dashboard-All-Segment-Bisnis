@@ -1,14 +1,13 @@
 """Halaman-halaman dashboard: Upload -> Proses -> Ringkasan -> Dashboard."""
 import hashlib
+import html
+
 from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
-
-import hashlib
-import html
 
 import data as D
 import ui
