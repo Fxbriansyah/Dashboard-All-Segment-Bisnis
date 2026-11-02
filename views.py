@@ -336,15 +336,15 @@ def _trend_section(df):
     t_day, t_month, t_year = st.tabs(["Harian", "Bulanan", "Tahunan"])
 
     with t_day:
-        d = df.dropna(subset=["TANGGAL_PENCAIRAN"]).copy()
+        d = df.dropna(subset=["OPEN_DATE"]).copy()
         if d.empty:
             st.info("Tidak ada tanggal pencairan yang valid untuk filter ini.")
         else:
-            d["TANGGAL"] = d["TANGGAL_PENCAIRAN"].dt.normalize()
+            d["TANGGAL"] = d["OPEN_DATE"].dt.normalize()
             days = sorted(d["TANGGAL"].unique())[-TREND_DAYS:]
             d = d[d["TANGGAL"].isin(days)]
             _trend_chart(d, "TANGGAL", days, metric, segs, kind, xfmt="%d %b %Y", date_axis=True)
-            n_kosong = int(df["TANGGAL_PENCAIRAN"].isna().sum())
+            n_kosong = int(df["OPEN_DATE"].isna().sum())
             st.caption(f"Menampilkan {len(days)} hari pencairan terakhir (maks. {TREND_DAYS})."
                        + (f" {D.fmt_num(n_kosong)} baris tanpa tanggal valid tidak ikut." if n_kosong else ""))
 
@@ -503,11 +503,11 @@ def _dashboard_ringkas(df):
     c1, c2, c3, c4 = st.columns(4)
     with c1, st.container(border=False, height=H_ROW, key="tile_mingguan"):
         _tile_title("Pencairan 7 hari terakhir (plafond)")
-        w = df.dropna(subset=["TANGGAL_PENCAIRAN"])
+        w = df.dropna(subset=["OPEN_DATE"])
         if w.empty:
             st.info("Tidak ada tanggal pencairan valid.")
         else:
-            w = w.assign(_t=w["TANGGAL_PENCAIRAN"].dt.normalize())
+            w = w.assign(_t=w["OPEN_DATE"].dt.normalize())
             days = pd.date_range(w["_t"].max() - pd.Timedelta(days=6), w["_t"].max())
             v = w.groupby("_t")["PLAFOND"].sum().reindex(days).fillna(0)
             fig = go.Figure(go.Scatter(
@@ -668,7 +668,7 @@ def page_dashboard():
         st.dataframe(
             detail.head(max_rows), width="stretch", hide_index=True,
             column_config={
-                "TANGGAL_PENCAIRAN": st.column_config.DateColumn("TANGGAL_PENCAIRAN", format="dd/mm/yyyy"),
+                "OPEN_DATE": st.column_config.DateColumn("OPEN_DATE", format="dd/mm/yyyy"),
                 "TAHUN PENCAIRAN": st.column_config.NumberColumn("TAHUN PENCAIRAN", format="%d"),
                 "BULAN_PENCAIRAN": st.column_config.NumberColumn("BULAN_PENCAIRAN", format="%d"),
                 "PLAFOND": st.column_config.NumberColumn("PLAFOND", format="localized"),
