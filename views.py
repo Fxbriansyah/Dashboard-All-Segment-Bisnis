@@ -265,25 +265,6 @@ def _npl_check(df):
         st.dataframe(prod_view, hide_index=True, width="stretch")
 
 
-def _ordered_segments(df):
-    """Segmen yang ada di data: urutan SEGMENT_ORDER dulu, sisanya menyusul."""
-    segs = [s for s in SEGMENT_ORDER if s in set(df["PRODUCT_OWNER"])]
-    return segs + [s for s in df["PRODUCT_OWNER"].unique() if s not in segs]
-
-
-def _monthly_periods(df, n):
-    """Ambil n bulan pencairan terakhir. Return (df + kolom BULAN, daftar label bulan berurutan)."""
-    d = df.dropna(subset=["TAHUN PENCAIRAN", "BULAN_PENCAIRAN"]).copy()
-    if d.empty:
-        return d, []
-    d["_p"] = d["TAHUN PENCAIRAN"].astype(int) * 100 + d["BULAN_PENCAIRAN"].astype(int)
-    periods = sorted(d["_p"].unique())[-n:]
-    d = d[d["_p"].isin(periods)]
-    label = lambda p: f"{D.fmt_bulan(p % 100)[:3]} {p // 100}"
-    d["BULAN"] = d["_p"].map(label)
-    return d, [label(p) for p in periods]
-
-
 def _trend_chart(d, x, order, metric, segs, kind="Garis", xfmt=None, date_axis=False, tickangle=0,
                  height=330, tmargin=44):
     """Tren per segmen. kind = 'Garis' (satu garis per segmen + garis putus-putus total) atau 'Kolom' (bertumpuk).
@@ -332,11 +313,12 @@ def _trend_section(df):
     r1, r2, _ = st.columns([1.2, 1.2, 3])
     metric = r1.radio("Ukuran", ["Plafond", "NoA"], horizontal=True, key="trend_metric")
     kind = r2.radio("Tampilan", ["Garis", "Kolom"], horizontal=True, key="trend_kind")
-    segs = _ordered_segments(df)
+    segs = [s for s in SEGMENT_ORDER if s in set(df["PRODUCT_OWNER"])]
+    segs += [s for s in df["PRODUCT_OWNER"].unique() if s not in segs]
     t_day, t_month, t_year = st.tabs(["Harian", "Bulanan", "Tahunan"])
 
     with t_day:
-        d = df.dropna(subset=[""]).copy()
+        d = df.dropna(subset=["TANGGAL_PENCAIRAN"]).copy()
         if d.empty:
             st.info("Tidak ada tanggal pencairan yang valid untuk filter ini.")
         else:
@@ -349,12 +331,18 @@ def _trend_section(df):
                        + (f" {D.fmt_num(n_kosong)} baris tanpa tanggal valid tidak ikut." if n_kosong else ""))
 
     with t_month:
-        d, labels = _monthly_periods(df, TREND_MONTHS)
+        d = df.dropna(subset=["TAHUN PENCAIRAN", "BULAN_PENCAIRAN"]).copy()
         if d.empty:
             st.info("Tidak ada data tahun/bulan pencairan untuk filter ini.")
         else:
-            _trend_chart(d, "BULAN", labels, metric, segs, kind, tickangle=-45 if len(labels) > 12 else 0)
-            st.caption(f"Menampilkan {len(labels)} bulan terakhir (maks. {TREND_MONTHS}).")
+            d["_p"] = d["TAHUN PENCAIRAN"].astype(int) * 100 + d["BULAN_PENCAIRAN"].astype(int)
+            periods = sorted(d["_p"].unique())[-TREND_MONTHS:]
+            d = d[d["_p"].isin(periods)]
+            label = lambda p: f"{D.fmt_bulan(p % 100)[:3]} {p // 100}"
+            d["BULAN"] = d["_p"].map(label)
+            _trend_chart(d, "BULAN", [label(p) for p in periods], metric, segs, kind,
+                         tickangle=-45 if len(periods) > 12 else 0)
+            st.caption(f"Menampilkan {len(periods)} bulan terakhir (maks. {TREND_MONTHS}).")
 
     with t_year:
         d = df.dropna(subset=["TAHUN PENCAIRAN"]).copy()
@@ -465,7 +453,8 @@ def _dashboard_ringkas(df):
     st.markdown(f"<style>{RINGKAS_CSS}</style>", unsafe_allow_html=True)
     H_KPI, H_ROW = 124, 270
     plafond, outstanding = df["PLAFOND"].sum(), df["OUTSTANDING"].sum()
-    segs = _ordered_segments(df)
+    segs = [x for x in SEGMENT_ORDER if x in set(df["PRODUCT_OWNER"])]
+    segs += [x for x in df["PRODUCT_OWNER"].unique() if x not in segs]
     color = lambda n: SEGMENT_THEME.get(n, DEFAULT_THEME)["color"]
 
     # --- Baris 1: KPI ---
@@ -483,11 +472,17 @@ def _dashboard_ringkas(df):
     a, b = st.columns([2, 1.2])
     with a, st.container(border=False, height=H_ROW, key="tile_tren"):
         _tile_title("Tren pencairan bulanan (plafond)")
-        d, labels = _monthly_periods(df, 12)
+        d = df.dropna(subset=["TAHUN PENCAIRAN", "BULAN_PENCAIRAN"]).copy()
         if d.empty:
             st.info("Tidak ada data bulan pencairan.")
         else:
-            _trend_chart(d, "BULAN", labels, "Plafond", segs, "Garis", height=H_ROW - 54, tmargin=26)
+            d["_p"] = d["TAHUN PENCAIRAN"].astype(int) * 100 + d["BULAN_PENCAIRAN"].astype(int)
+            periods = sorted(d["_p"].unique())[-12:]
+            d = d[d["_p"].isin(periods)]
+            label = lambda p: f"{D.fmt_bulan(p % 100)[:3]} {p // 100}"
+            d["BULAN"] = d["_p"].map(label)
+            _trend_chart(d, "BULAN", [label(p) for p in periods], "Plafond", segs, "Garis",
+                         height=H_ROW - 54, tmargin=26)
     with b, st.container(border=False, height=H_ROW, key="tile_segmen"):
         _tile_title("Ringkasan per segmen")
         rows = []
@@ -588,7 +583,8 @@ def page_dashboard():
     st.write("")
 
     # Kartu per segmen (maks. 4 per baris; kolom otomatis turun baris di layar sempit)
-    segs = _ordered_segments(df)
+    segs = [s for s in SEGMENT_ORDER if s in set(df["PRODUCT_OWNER"])]
+    segs += [s for s in df["PRODUCT_OWNER"].unique() if s not in segs]
     with st.container(key="segments"):
         for i in range(0, len(segs), 4):
             row = segs[i:i + 4]
