@@ -306,7 +306,61 @@ def _trend_chart(d, x, order, metric, segs, kind="Garis", xfmt=None, date_axis=F
                                   font=dict(size=12 if tmargin >= 40 else 10), title_text=""))
     ui.show_fig(fig)
 
+def _daily_rows(s, names):
+    """Baris produk untuk kartu harian: nama + NoA, lalu plafond dan outstanding."""
+    rows = []
+    for name in names:
+        g = s[s["GROUP_PRODUCT"] == name]
+        rows.append(
+            f'<div class="prod"><div class="prod-top"><b>{html.escape(str(name))}</b>'
+            f'<span>NoA {D.fmt_num(len(g))}</span></div>'
+            f'<div class="prod-meta"><span>Plafond</span><b>{_rp(g["PLAFOND"].sum())}</b></div>'
+            f'<div class="prod-meta"><span>Outstanding</span><b>{_rp(g["OUTSTANDING"].sum())}</b></div></div>')
+    return "".join(rows)
 
+def _daily_card(df, segment):
+    """Kartu satu segmen untuk pencairan hari ini: NoA, produk, plafond, outstanding + rincian per produk."""
+    th = SEGMENT_THEME.get(segment, DEFAULT_THEME)
+    s = df[df["PRODUCT_OWNER"] == segment]
+    names = list(s.groupby("GROUP_PRODUCT")["PLAFOND"].sum().sort_values(ascending=False).index)
+    key = "tile_day_" + "".join(ch if ch.isalnum() else "_" for ch in segment)   # beda dari kartu segmen di bawah
+    with st.container(border=False, key=key):
+        st.markdown(
+            f'<div class="seg-head" style="--seg-bg:{th["bg"]};--seg-border:{th["border"]};--seg-color:{th["color"]}">'
+            f'<span>{th["icon"]}</span>{segment}</div>'
+            f'<div class="seg-stats">'
+            f'<div><span>NoA</span><b>{D.fmt_num(len(s))}</b></div>'
+            f'<div><span>Produk</span><b>{D.fmt_num(len(names))}</b></div>'
+            f'<div class="wide"><span>Plafond</span><b>{_rp(s["PLAFOND"].sum())}</b></div>'
+            f'<div class="wide"><span>Outstanding</span><b>{_rp(s["OUTSTANDING"].sum())}</b></div></div>'
+            f'<div class="seg-sub" style="--seg-color:{th["color"]}">Produk cair hari ini ({len(names)})</div>'
+            f'<div class="prod-list" style="height:{PROD_LIST_H}px!important;max-height:{PROD_LIST_H}px!important;'
+            f'overflow-y:auto!important;overflow-x:hidden!important">{_daily_rows(s, names)}</div>',
+            unsafe_allow_html=True)
+
+
+def _daily_report(df, segs):
+    """Tab Harian: hanya pencairan HARI INI (WIB), per segmen + produk. Tanpa grafik garis."""
+    today = now_wib().date()
+    d = df.dropna(subset=["TANGGAL_PENCAIRAN"])
+    d = d[d["TANGGAL_PENCAIRAN"].dt.date == today]
+    st.markdown(f"**Pencairan hari ini - {today.strftime('%d/%m/%Y')}**")
+    if d.empty:
+        last = df["TANGGAL_PENCAIRAN"].max()
+        st.info("Belum ada pencairan hari ini pada filter yang dipilih."
+                + (f" Tanggal pencairan terakhir di data: {last:%d/%m/%Y}." if pd.notna(last) else ""))
+        return
+    ui.kpis([("Total NoA", D.fmt_num(len(d))),
+             ("Total plafond", _rp(d["PLAFOND"].sum()), "", D.fmt_money(d["PLAFOND"].sum())),
+             ("Total outstanding", _rp(d["OUTSTANDING"].sum()), "", D.fmt_money(d["OUTSTANDING"].sum()))])
+    aktif = [s for s in segs if s in set(d["PRODUCT_OWNER"])]
+    with st.container(key="segments_day"):
+        for i in range(0, len(aktif), 4):
+            row = aktif[i:i + 4]
+            for col, seg in zip(st.columns(len(row)), row):
+                with col:
+                    _daily_card(d, seg)
+                    
 def _trend_section(df):
     """Tren pencairan harian / bulanan / tahunan, dipecah per segmen."""
     st.subheader("Tren pencairan")
@@ -318,18 +372,8 @@ def _trend_section(df):
     t_day, t_month, t_year = st.tabs(["Harian", "Bulanan", "Tahunan"])
 
     with t_day:
-        d = df.dropna(subset=["TANGGAL_PENCAIRAN"]).copy()
-        if d.empty:
-            st.info("Tidak ada tanggal pencairan yang valid untuk filter ini.")
-        else:
-            d["TANGGAL"] = d["TANGGAL_PENCAIRAN"].dt.normalize()
-            days = sorted(d["TANGGAL"].unique())[-TREND_DAYS:]
-            d = d[d["TANGGAL"].isin(days)]
-            _trend_chart(d, "TANGGAL", days, metric, segs, kind, xfmt="%d %b %Y", date_axis=True)
-            n_kosong = int(df["TANGGAL_PENCAIRAN"].isna().sum())
-            st.caption(f"Menampilkan {len(days)} hari pencairan terakhir (maks. {TREND_DAYS})."
-                       + (f" {D.fmt_num(n_kosong)} baris tanpa tanggal valid tidak ikut." if n_kosong else ""))
-
+        _daily_report(df, segs)
+            
     with t_month:
         d = df.dropna(subset=["TAHUN PENCAIRAN", "BULAN_PENCAIRAN"]).copy()
         if d.empty:
@@ -482,7 +526,7 @@ def _dashboard_ringkas(df):
             label = lambda p: f"{D.fmt_bulan(p % 100)[:3]} {p // 100}"
             d["BULAN"] = d["_p"].map(label)
             _trend_chart(d, "BULAN", [label(p) for p in periods], "Plafond", segs, "Garis",
-                         height=H_ROW - 54, tmargin=26)
+                         tickangle=-45, height=H_ROW - 54, tmargin=26)
     with b, st.container(border=False, height=H_ROW, key="tile_segmen"):
         _tile_title("Ringkasan per segmen")
         rows = []
@@ -510,7 +554,7 @@ def _dashboard_ringkas(df):
                 textposition="top center", textfont=dict(size=10), fill="tozeroy", fillcolor="rgba(147,197,253,.55)",
                 line=dict(color=BRAND, width=2.5, shape="spline"), marker=dict(size=7, color="#0f172a"),
                 hovertemplate="%{x|%d %b %Y}<br>Rp %{y:,.0f}<extra></extra>"))
-            fig.update_xaxes(tickformat="%d %b", tickmode="array", tickvals=days)
+            fig.update_xaxes(tickformat="%d %b", tickmode="array", tickvals=days, tickangle=-45)
             fig.update_yaxes(visible=False, range=[0, max(v.max() * 1.3, 1)])
             ui.show_fig(ui.style_fig(fig, H_ROW - 54))
     ps = _product_stats(df)

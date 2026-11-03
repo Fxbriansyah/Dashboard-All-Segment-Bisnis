@@ -77,6 +77,12 @@ def validate_columns(df):
     """Kembalikan daftar kolom wajib yang belum ada."""
     return [c for c in REQUIRED_COLUMNS if c not in df.columns]
 
+def day_to_date(tgl, tahun, bulan):
+    """Nomor hari (1-31) + tahun + bulan -> tanggal lengkap. Hari yang tidak ada (mis. 31 Feb) -> kosong."""
+    day = pd.to_numeric(tgl, errors="coerce")
+    ok = day.between(1, 31) & tahun.notna() & bulan.notna()
+    parts = pd.DataFrame({"year": tahun.where(ok), "month": bulan.where(ok), "day": day.where(ok)})
+    return pd.to_datetime(parts, errors="coerce")
 
 def prepare_data(raw):
     """Bersihkan tipe data: angka, bulan (angka/teks), tanggal, dan kolom teks."""
@@ -105,8 +111,11 @@ def prepare_data(raw):
         serial = num.where(num.between(20000, 80000) & ~is_ymd)   # nomor seri tanggal Excel
         parsed = parsed.fillna(pd.to_datetime(serial, unit="D", origin="1899-12-30", errors="coerce"))
         parsed = parsed.fillna(pd.to_datetime(tgl.where(num.isna()), errors="coerce"))
-    df["TANGGAL_PENCAIRAN"] = parsed.where(parsed >= "1980-01-01")  # tanggal tak masuk akal -> kosong
-
+        parsed = parsed.where(parsed >= "1980-01-01")  # tanggal tak masuk akal -> kosong
+    # Kolom berisi hanya nomor hari (1-31): susun tanggal lengkap dari TAHUN + BULAN + hari.
+    parsed = parsed.fillna(day_to_date(tgl, df["TAHUN PENCAIRAN"], df["BULAN_PENCAIRAN"]))
+    df["TANGGAL_PENCAIRAN"] = parsed
+    
     # Flag NPL dari kolektabilitas (angka 3-5; "3", "3.0", "Kol 3" semuanya terbaca).
     if KOL_COLUMN in df.columns:
         kol = pd.to_numeric(df[KOL_COLUMN].astype(str).str.extract(r"(\d+)")[0], errors="coerce")
