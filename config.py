@@ -52,7 +52,7 @@ BULAN_TEXT_TO_NUM = {
     "desember": 12, "des": 12, "dec": 12, "december": 12,
 }
 # TODO: lengkapi nama untuk kode "7" dan "8". Kode yang tidak terdaftar tampil apa adanya.
-STATUS_LOAN_LABEL = {"1": "Active", "2": "Lunas", "7": "7", "8": "8"}
+STATUS_LOAN_LABEL = {"1": "1", "2": "2", "7": "7", "8": "8"}
 
 STEPS = ["Upload data", "Validasi & proses", "Ringkasan", "Dashboard"]
 
@@ -63,6 +63,14 @@ DB_CONFIG = {
     "user": os.environ.get("DB_USER", "postgres"),
     "password": os.environ.get("DB_PASSWORD", ""),
 }
+def db_url():
+    """URL koneksi PostgreSQL; password aman walau mengandung karakter khusus (@, #, dst)."""
+    from sqlalchemy.engine import URL
+    d = DB_CONFIG
+    return URL.create("postgresql+psycopg2", username=d["user"], password=d["password"],
+                      host=d["host"], port=int(d["port"]), database=d["dbname"])
+
+
 # Kolom tabel `pencairan` (snake_case) -> nama kolom yang dipakai dashboard.
 DB_COLUMN_TO_APP = {
     "product_owner": "PRODUCT_OWNER", "group_product": "GROUP_PRODUCT", "plan_code": "PLAN_CODE",

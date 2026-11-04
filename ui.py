@@ -6,50 +6,6 @@ import streamlit as st
 from config import BRAND, CSS_PATH, STEPS
 
 
-# CSS tambahan (dimuat setelah assets/style.css, jadi menimpa gaya yang sama).
-# Hapus blok ini kalau ingin kembali ke tampilan lama.
-EXTRA_CSS = """
-/* Sembunyikan bilah atas Streamlit (Deploy, menu titik tiga, garis warna, status "Running").
-   Header dibiarkan transparan (logo tetap tampil) dan tidak menangkap klik, supaya tombol di bawahnya bisa diklik.
-   Tombol buka/tutup sidebar dikecualikan supaya tetap bisa diklik. */
-[data-testid="stToolbarActions"],[data-testid="stAppDeployButton"],[data-testid="stMainMenu"],
-[data-testid="stDecoration"],[data-testid="stStatusWidget"],#MainMenu,footer{display:none !important}
-[data-testid="stHeader"]{background:transparent !important;pointer-events:none !important}
-[data-testid="stMainBlockContainer"]{padding-top:4.5rem !important}
-[data-testid="stSidebarCollapsedControl"],[data-testid="stExpandSidebarButton"],
-[data-testid="stSidebarCollapseButton"],[data-testid="stSidebarCollapsedControl"] *,
-[data-testid="stExpandSidebarButton"] *{pointer-events:auto !important}
-[data-testid="stToolbar"]{background:transparent !important}
-
-/* NPL: badge berwarna (hijau < NPL_WARN, kuning < NPL_BAD, merah di atasnya) */
-.npl{display:inline-block;padding:2px 9px;border-radius:999px;font-weight:700;font-size:.82em;line-height:1.5;white-space:nowrap}
-.npl-ok{background:#dcfce7;color:#166534}
-.npl-warn{background:#fef3c7;color:#92400e}
-.npl-bad{background:#fee2e2;color:#b91c1c}
-.npl-na{background:#f1f5f9;color:#64748b}
-
-/* KPI: angka lebih besar + catatan kecil; kartu NPL diberi garis warna di kiri */
-.kpi b{font-size:1.5rem !important;line-height:1.25 !important}
-.kpi>span{color:#475569 !important;font-size:12px !important;font-weight:600 !important}
-.kpi-note{display:block;margin-top:3px;font-size:11px;color:#64748b;font-weight:500}
-.kpi.kpi-ok{border-left:4px solid #22c55e !important}
-.kpi.kpi-warn{border-left:4px solid #f59e0b !important}
-.kpi.kpi-bad{border-left:4px solid #ef4444 !important}
-.kpi .npl{font-size:.75em;padding:3px 12px}
-
-/* Kartu segmen: label lebih kontras */
-.seg-stats>div>span,.prod-meta>span{color:#475569 !important}
-.seg-stats .npl{font-size:.9em}
-
-/* Daftar produk: tinggi tetap (diatur PROD_LIST_H di views.py) + scroll, jadi semua kartu segmen sejajar */
-.prod-list{flex:none !important;scrollbar-width:thin;scrollbar-color:#cbd5e1 transparent}
-.prod-list::-webkit-scrollbar{width:6px}
-.prod-list::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:6px}
-.prod-list .prod{flex:none !important}
-.prod-meta{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:4px;font-size:12px}
-.prod-meta b{font-weight:700;color:#0f172a}
-"""
-
 # Sidebar hanya dipakai di halaman Dashboard (berisi filter); di halaman lain disembunyikan.
 HIDE_SIDEBAR_CSS = """
 [data-testid="stSidebar"],[data-testid="stSidebarCollapsedControl"],[data-testid="collapsedControl"],
@@ -73,7 +29,7 @@ SHOW_SIDEBAR_CSS = """
 
 
 def inject_css(show_sidebar=False):
-    css = (CSS_PATH.read_text(encoding="utf-8") + EXTRA_CSS
+    css = (CSS_PATH.read_text(encoding="utf-8")
            + (SHOW_SIDEBAR_CSS if show_sidebar else HIDE_SIDEBAR_CSS))
     st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
 

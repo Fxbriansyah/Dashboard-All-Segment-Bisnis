@@ -1,13 +1,13 @@
-"""Format angka, pembersihan data Excel, dan akses database (opsional)."""
+"""Format angka, pembersihan data Excel, dan akses database (opsional).
+Pembersihan data (bagian Pipeline Excel) juga dipakai load_to_postgres.py."""
 import io
 import re
 
 import pandas as pd
 import streamlit as st
 
-from config import (BULAN_LABEL, BULAN_TEXT_TO_NUM, DB_COLUMN_TO_APP, DB_CONFIG, KOL_ALIASES, KOL_COLUMN,
-                    NPL_BAD, NPL_MAX_KOL, NPL_MIN_KOL, NPL_WARN,
-                    REQUIRED_COLUMNS, STATUS_LOAN_LABEL, TEXT_COLUMNS)
+from config import (BULAN_LABEL, BULAN_TEXT_TO_NUM, DB_COLUMN_TO_APP, KOL_ALIASES, KOL_COLUMN, NPL_BAD,
+                    NPL_MAX_KOL, NPL_MIN_KOL, NPL_WARN, REQUIRED_COLUMNS, STATUS_LOAN_LABEL, TEXT_COLUMNS, db_url)
 
 
 # ---------- Format ala Indonesia (titik ribuan, koma desimal) ----------
@@ -73,9 +73,43 @@ def npl_badge(df, prefix=""):
 
 
 # ---------- Pipeline Excel ----------
+
+def _key(name):
+    """Kunci pembanding nama kolom: abaikan huruf besar/kecil, spasi, underscore, dan spasi tak terlihat."""
+    return re.sub(r"[\s_]+", "", str(name)).upper()
+
+
+_CANON = {_key(c): c for c in REQUIRED_COLUMNS + ["BRANCH_CODE"]}
+_CANON.update({_key(a): KOL_COLUMN for a in KOL_ALIASES})
+
+
+def _normalize_columns(df):
+    """'plafond ', 'Tahun_Pencairan', 'TAHUN  PENCAIRAN' -> nama kolom resmi di config."""
+    df = df.copy()
+    df.columns = [_CANON.get(_key(c), str(c).strip()) for c in df.columns]
+    return df
+
+
 def validate_columns(df):
     """Kembalikan daftar kolom wajib yang belum ada."""
     return [c for c in REQUIRED_COLUMNS if c not in df.columns]
+
+
+def parse_dates(tgl):
+    """Mendukung datetime asli, YYYYMMDD, nomor seri Excel, dan teks tanggal.
+    Tanggal yang tidak masuk akal (< 1980) dikosongkan, bukan jadi 1970."""
+    if pd.api.types.is_datetime64_any_dtype(tgl):
+        parsed = tgl
+    else:
+        num = pd.to_numeric(tgl, errors="coerce")
+        txt = tgl.astype(str).str.replace(r"\.0$", "", regex=True).str.strip()
+        is_ymd = txt.str.fullmatch(r"\d{8}")
+        parsed = pd.to_datetime(txt.where(is_ymd), format="%Y%m%d", errors="coerce")
+        serial = num.where(num.between(20000, 80000) & ~is_ymd)   # nomor seri tanggal Excel
+        parsed = parsed.fillna(pd.to_datetime(serial, unit="D", origin="1899-12-30", errors="coerce"))
+        parsed = parsed.fillna(pd.to_datetime(tgl.where(num.isna()), errors="coerce"))
+    return parsed.where(parsed >= "1980-01-01")
+
 
 def day_to_date(tgl, tahun, bulan):
     """Nomor hari (1-31) + tahun + bulan -> tanggal lengkap. Hari yang tidak ada (mis. 31 Feb) -> kosong."""
@@ -83,6 +117,7 @@ def day_to_date(tgl, tahun, bulan):
     ok = day.between(1, 31) & tahun.notna() & bulan.notna()
     parts = pd.DataFrame({"year": tahun.where(ok), "month": bulan.where(ok), "day": day.where(ok)})
     return pd.to_datetime(parts, errors="coerce")
+
 
 def prepare_data(raw):
     """Bersihkan tipe data: angka, bulan (angka/teks), tanggal, dan kolom teks."""
@@ -99,19 +134,11 @@ def prepare_data(raw):
     df["BULAN_PENCAIRAN"] = pd.to_numeric(bulan, errors="coerce").fillna(
         bulan.astype(str).str.strip().str.lower().map(BULAN_TEXT_TO_NUM))
 
-    # Tanggal: mendukung datetime, YYYYMMDD, nomor seri Excel, dan teks tanggal.
+    # Tanggal: datetime, YYYYMMDD, nomor seri Excel, teks, atau hanya nomor hari (1-31).
     tgl = df["TANGGAL_PENCAIRAN"]
-    if pd.api.types.is_datetime64_any_dtype(tgl):
-        parsed = tgl
-    else:
-        num = pd.to_numeric(tgl, errors="coerce")
-        txt = tgl.astype(str).str.replace(r"\.0$", "", regex=True).str.strip()
-        is_ymd = txt.str.fullmatch(r"\d{8}")
-        parsed = pd.to_datetime(txt.where(is_ymd), format="%Y%m%d", errors="coerce")
-        serial = num.where(num.between(20000, 80000) & ~is_ymd)   # nomor seri tanggal Excel
-        parsed = parsed.fillna(pd.to_datetime(serial, unit="D", origin="1899-12-30", errors="coerce"))
-        parsed = parsed.fillna(pd.to_datetime(tgl.where(num.isna()), errors="coerce"))
-        parsed = parsed.where(parsed >= "1980-01-01")  # tanggal tak masuk akal -> kosong
+    parsed = parse_dates(tgl)
+    parsed = parsed.fillna(day_to_date(tgl, df["TAHUN PENCAIRAN"], df["BULAN_PENCAIRAN"]))
+    df["TANGGAL_PENCAIRAN"] = parsed
     # Kolom berisi hanya nomor hari (1-31): susun tanggal lengkap dari TAHUN + BULAN + hari.
     parsed = parsed.fillna(day_to_date(tgl, df["TAHUN PENCAIRAN"], df["BULAN_PENCAIRAN"]))
     df["TANGGAL_PENCAIRAN"] = parsed
@@ -126,22 +153,6 @@ def prepare_data(raw):
         if c in df.columns:
             df[c] = (df[c].fillna("(Kosong)").astype(str).str.strip()
                      .str.replace(r"^(-?\d+)\.0+$", r"\1", regex=True))
-    return df
-
-
-def _key(name):
-    """Kunci pembanding nama kolom: abaikan huruf besar/kecil, spasi, underscore, dan spasi tak terlihat."""
-    return re.sub(r"[\s_]+", "", str(name)).upper()
-
-
-_CANON = {_key(c): c for c in REQUIRED_COLUMNS + ["BRANCH_CODE"]}
-_CANON.update({_key(a): KOL_COLUMN for a in KOL_ALIASES})
-
-
-def _normalize_columns(df):
-    """'plafond ', 'Tahun_Pencairan', 'TAHUN  PENCAIRAN' -> nama kolom resmi di config."""
-    df = df.copy()
-    df.columns = [_CANON.get(_key(c), str(c).strip()) for c in df.columns]
     return df
 
 
@@ -181,9 +192,7 @@ def read_excel_bytes(file_bytes):
 @st.cache_resource(show_spinner=False)
 def get_engine():
     from sqlalchemy import create_engine
-    c = DB_CONFIG
-    url = f"postgresql+psycopg2://{c['user']}:{c['password']}@{c['host']}:{c['port']}/{c['dbname']}"
-    return create_engine(url, pool_pre_ping=True)
+    return create_engine(db_url(), pool_pre_ping=True)
 
 
 @st.cache_data(show_spinner=False, ttl=60)

@@ -9,7 +9,7 @@ LOGO = BASE_DIR / "assets" / "logo.png"
 load_dotenv(BASE_DIR / ".env")  # baca kredensial DB dari .env (opsional)
 st.set_page_config(
     page_title="Dashboard Pencairan",
-    page_icon=str(LOGO),
+    page_icon=str(LOGO) if LOGO.exists() else "📊",
     layout="wide",
     initial_sidebar_state="expanded",
 )

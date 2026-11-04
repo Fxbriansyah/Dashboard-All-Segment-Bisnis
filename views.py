@@ -28,7 +28,7 @@ def now_wib():
 
 
 SESSION_KEYS = ["stage", "data", "file_hash", "file_name", "processed_at"]
-FILTER_KEYS = ["f_year", "f_month", "f_status"]
+FILTER_KEYS = ["f_status"]
 CHART_BOX = 400   # tinggi kotak chart di baris tiga chart (px)
 LEGEND_TALL = 130   # tinggi kotak legenda produk di chart donut (px); sisanya bisa di-scroll
 PROD_LIST_H = 315   # tinggi kotak daftar produk per segmen (px, kira-kira 5 produk); sisanya bisa di-scroll
@@ -303,7 +303,7 @@ def _trend_chart(d, x, order, metric, segs, kind="Garis", xfmt=None, date_axis=F
     # legenda di atas grafik (di bawah bertabrakan dengan label sumbu X yang miring)
     fig.update_layout(margin=dict(l=8, r=8, t=tmargin, b=8),
                       legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0,
-                                  font=dict(size=12 if tmargin >= 40 else 10), title_text=""))
+                                  font=dict(size=11 if tmargin >= 40 else 10), title_text=""))
     ui.show_fig(fig)
 
 def _daily_rows(s, names):
@@ -318,86 +318,122 @@ def _daily_rows(s, names):
             f'<div class="prod-meta"><span>Outstanding</span><b>{_rp(g["OUTSTANDING"].sum())}</b></div></div>')
     return "".join(rows)
 
-def _daily_card(df, segment):
-    """Kartu satu segmen untuk pencairan hari ini: NoA, produk, plafond, outstanding + rincian per produk."""
+def _period_rows(s, names):
+    """Baris produk: nama + NoA, lalu plafond."""
+    rows = []
+    for name in names:
+        g = s[s["GROUP_PRODUCT"] == name]
+        rows.append(
+            f'<div class="prod"><div class="prod-top"><b>{html.escape(str(name))}</b>'
+            f'<span style="font-size:var(--fs-md);font-weight:700">NoA {D.fmt_num(len(g))}</span></div>'
+            f'<div class="prod-meta"><span>Plafond</span><b>{_rp(g["PLAFOND"].sum())}</b></div></div>')
+    return "".join(rows)
+
+
+def _period_card(d, segment, prefix):
+    """Kartu satu segmen: NoA (besar), jumlah produk, plafond + rincian per produk."""
     th = SEGMENT_THEME.get(segment, DEFAULT_THEME)
-    s = df[df["PRODUCT_OWNER"] == segment]
+    s = d[d["PRODUCT_OWNER"] == segment]
     names = list(s.groupby("GROUP_PRODUCT")["PLAFOND"].sum().sort_values(ascending=False).index)
-    key = "tile_day_" + "".join(ch if ch.isalnum() else "_" for ch in segment)   # beda dari kartu segmen di bawah
+    key = f"tile_{prefix}_" + "".join(ch if ch.isalnum() else "_" for ch in segment)   # unik per tab
     with st.container(border=False, key=key):
         st.markdown(
             f'<div class="seg-head" style="--seg-bg:{th["bg"]};--seg-border:{th["border"]};--seg-color:{th["color"]}">'
             f'<span>{th["icon"]}</span>{segment}</div>'
             f'<div class="seg-stats">'
-            f'<div><span>NoA</span><b>{D.fmt_num(len(s))}</b></div>'
+            f'<div><span>NoA</span><b style="font-size:var(--fs-xl);line-height:1.2">{D.fmt_num(len(s))}</b></div>'
             f'<div><span>Produk</span><b>{D.fmt_num(len(names))}</b></div>'
-            f'<div class="wide"><span>Plafond</span><b>{_rp(s["PLAFOND"].sum())}</b></div>'
-            f'<div class="wide"><span>Outstanding</span><b>{_rp(s["OUTSTANDING"].sum())}</b></div></div>'
-            f'<div class="seg-sub" style="--seg-color:{th["color"]}">Produk cair hari ini ({len(names)})</div>'
+            f'<div class="wide"><span>Plafond</span><b>{_rp(s["PLAFOND"].sum())}</b></div></div>'
+            f'<div class="seg-sub" style="--seg-color:{th["color"]}">Produk cair ({len(names)})</div>'
             f'<div class="prod-list" style="height:{PROD_LIST_H}px!important;max-height:{PROD_LIST_H}px!important;'
-            f'overflow-y:auto!important;overflow-x:hidden!important">{_daily_rows(s, names)}</div>',
+            f'overflow-y:auto!important;overflow-x:hidden!important">{_period_rows(s, names)}</div>',
             unsafe_allow_html=True)
 
 
-def _daily_report(df, segs):
-    """Tab Harian: hanya pencairan HARI INI (WIB), per segmen + produk. Tanpa grafik garis."""
-    today = now_wib().date()
-    d = df.dropna(subset=["TANGGAL_PENCAIRAN"])
-    d = d[d["TANGGAL_PENCAIRAN"].dt.date == today]
-    st.markdown(f"**Pencairan hari ini - {today.strftime('%d/%m/%Y')}**")
+def _period_report(d, segs, prefix, title, empty_msg):
+    """Isi satu tab tren: total NoA + plafond, lalu kartu per segmen (hanya segmen yang ada pencairannya)."""
+    st.markdown(f"**{title}**")
     if d.empty:
-        last = df["TANGGAL_PENCAIRAN"].max()
-        st.info("Belum ada pencairan hari ini pada filter yang dipilih."
-                + (f" Tanggal pencairan terakhir di data: {last:%d/%m/%Y}." if pd.notna(last) else ""))
+        st.info(empty_msg)
         return
     ui.kpis([("Total NoA", D.fmt_num(len(d))),
-             ("Total plafond", _rp(d["PLAFOND"].sum()), "", D.fmt_money(d["PLAFOND"].sum())),
-             ("Total outstanding", _rp(d["OUTSTANDING"].sum()), "", D.fmt_money(d["OUTSTANDING"].sum()))])
+             ("Total plafond", _rp(d["PLAFOND"].sum()), "", D.fmt_money(d["PLAFOND"].sum()))])
     aktif = [s for s in segs if s in set(d["PRODUCT_OWNER"])]
-    with st.container(key="segments_day"):
+    with st.container(key=f"segments_{prefix}"):
         for i in range(0, len(aktif), 4):
             row = aktif[i:i + 4]
             for col, seg in zip(st.columns(len(row)), row):
                 with col:
-                    _daily_card(d, seg)
-                    
+                    _period_card(d, seg, prefix)
+
+
+def _daily_report(df, segs):
+    today = now_wib().date()
+    picked = st.date_input("Tanggal pencairan (pilih satu hari atau rentang)", value=(today, today),
+                           format="DD/MM/YYYY", key="trend_day")
+    if isinstance(picked, (tuple, list)):
+        if len(picked) < 2:   # baru memilih tanggal awal
+            st.info("Pilih tanggal akhir untuk melengkapi rentang.")
+            return
+        start, end = picked
+    else:
+        start = end = picked
+
+    d = df.dropna(subset=["TANGGAL_PENCAIRAN"])
+    d = d[d["TANGGAL_PENCAIRAN"].between(pd.Timestamp(start), pd.Timestamp(end) + pd.Timedelta(days=1),
+                                         inclusive="left")]
+    if start == end:
+        title = f"Pencairan {'hari ini' if start == today else 'tanggal'} - {start:%d/%m/%Y}"
+    else:
+        title = f"Pencairan {start:%d/%m/%Y} s.d. {end:%d/%m/%Y}"
+    last = df["TANGGAL_PENCAIRAN"].max()
+    msg = ("Tidak ada pencairan pada tanggal ini dengan filter yang dipilih."
+           + (f" Tanggal pencairan terakhir di data: {last:%d/%m/%Y}." if pd.notna(last) else ""))
+    _period_report(d, segs, "day", title, msg)
+
+
+def _year_options(df, now):
+    """Tahun yang ada di data, ditambah tahun berjalan, terbaru di atas."""
+    return sorted({int(y) for y in df["TAHUN PENCAIRAN"].dropna().unique()} | {now.year}, reverse=True)
+
+
+def _monthly_report(df, segs):
+    now = now_wib()
+    years = _year_options(df, now)
+    c1, c2, _ = st.columns([1, 1, 3])
+    year = c1.selectbox("Tahun", years, index=years.index(now.year), key="trend_m_year")
+    month = c2.selectbox("Bulan", list(range(1, 13)), index=now.month - 1,
+                         format_func=D.fmt_bulan, key="trend_m_month")
+    d = df[(df["TAHUN PENCAIRAN"] == year) & (df["BULAN_PENCAIRAN"] == month)]
+    suffix = " (bulan berjalan)" if (year, month) == (now.year, now.month) else ""
+    _period_report(d, segs, "month", f"Pencairan {D.fmt_bulan(month)} {year}{suffix}",
+                   "Tidak ada pencairan pada bulan ini dengan filter yang dipilih.")
+
+
+def _yearly_report(df, segs):
+    now = now_wib()
+    years = _year_options(df, now)
+    c1, _ = st.columns([1, 4])
+    year = c1.selectbox("Tahun", years, index=years.index(now.year), key="trend_y_year")
+    d = df[df["TAHUN PENCAIRAN"] == year]
+    suffix = " (tahun berjalan)" if year == now.year else ""
+    _period_report(d, segs, "year", f"Pencairan tahun {year}{suffix}",
+                   "Tidak ada pencairan pada tahun ini dengan filter yang dipilih.")
+
+
 def _trend_section(df):
-    """Tren pencairan harian / bulanan / tahunan, dipecah per segmen."""
+    """Pencairan hari ini / bulan berjalan / tahun berjalan, dipecah per segmen dan produk."""
     st.subheader("Tren pencairan")
-    r1, r2, _ = st.columns([1.2, 1.2, 3])
-    metric = r1.radio("Ukuran", ["Plafond", "NoA"], horizontal=True, key="trend_metric")
-    kind = r2.radio("Tampilan", ["Garis", "Kolom"], horizontal=True, key="trend_kind")
     segs = [s for s in SEGMENT_ORDER if s in set(df["PRODUCT_OWNER"])]
     segs += [s for s in df["PRODUCT_OWNER"].unique() if s not in segs]
     t_day, t_month, t_year = st.tabs(["Harian", "Bulanan", "Tahunan"])
-
     with t_day:
         _daily_report(df, segs)
-            
     with t_month:
-        d = df.dropna(subset=["TAHUN PENCAIRAN", "BULAN_PENCAIRAN"]).copy()
-        if d.empty:
-            st.info("Tidak ada data tahun/bulan pencairan untuk filter ini.")
-        else:
-            d["_p"] = d["TAHUN PENCAIRAN"].astype(int) * 100 + d["BULAN_PENCAIRAN"].astype(int)
-            periods = sorted(d["_p"].unique())[-TREND_MONTHS:]
-            d = d[d["_p"].isin(periods)]
-            label = lambda p: f"{D.fmt_bulan(p % 100)[:3]} {p // 100}"
-            d["BULAN"] = d["_p"].map(label)
-            _trend_chart(d, "BULAN", [label(p) for p in periods], metric, segs, kind,
-                         tickangle=-45 if len(periods) > 12 else 0)
-            st.caption(f"Menampilkan {len(periods)} bulan terakhir (maks. {TREND_MONTHS}).")
-
+        _monthly_report(df, segs)
     with t_year:
-        d = df.dropna(subset=["TAHUN PENCAIRAN"]).copy()
-        if d.empty:
-            st.info("Tidak ada data tahun pencairan untuk filter ini.")
-        else:
-            years = sorted(d["TAHUN PENCAIRAN"].astype(int).unique())
-            d["TAHUN"] = d["TAHUN PENCAIRAN"].astype(int).astype(str)
-            _trend_chart(d, "TAHUN", [str(y) for y in years], metric, segs, kind)
-
-
+        _yearly_report(df, segs)
+        
 def _reset_filters():
     for k in FILTER_KEYS:
         st.session_state[k] = []
@@ -412,10 +448,6 @@ def _sidebar_filters(df0):
         st.segmented_control("Tampilan", ["Ringkas", "Rinci"], key="view_mode", width="stretch",
                              format_func=lambda m: {"Ringkas": "▦ Ringkas", "Rinci": "☰ Rinci"}[m])
         st.caption("Ringkas: semua tile dalam satu layar. Rinci: lengkap dengan kartu segmen, grafik, dan tabel.")
-        st.multiselect("Tahun pencairan", sorted(df0["TAHUN PENCAIRAN"].dropna().unique()), key="f_year",
-                       format_func=D.fmt_tahun, placeholder="Semua")
-        st.multiselect("Bulan pencairan", sorted(df0["BULAN_PENCAIRAN"].dropna().unique()), key="f_month",
-                       format_func=D.fmt_bulan, placeholder="Semua")
         st.multiselect("Status loan", sorted(df0["STATUS_LOAN"].unique()), key="f_status",
                        format_func=D.fmt_status, placeholder="Semua")
         aktif = sum(bool(st.session_state.get(k)) for k in FILTER_KEYS)
@@ -431,9 +463,8 @@ def _sidebar_filters(df0):
 
 def _apply_filters(df0):
     df, ss = df0, st.session_state
-    for key, col in (("f_year", "TAHUN PENCAIRAN"), ("f_month", "BULAN_PENCAIRAN"), ("f_status", "STATUS_LOAN")):
-        if ss.get(key):
-            df = df[df[col].isin(ss[key])]
+    if ss.get("f_status"):
+        df = df[df["STATUS_LOAN"].isin(ss["f_status"])]
     return df
 
 
@@ -451,18 +482,17 @@ THEME_CSS = """
 
 RINGKAS_CSS = """
 [data-testid="stVerticalBlock"]{gap:.7rem !important}
-.tile-title{font-weight:800;font-size:14px;color:#0f172a;text-align:center;margin-bottom:2px}
-.tile-big{font-size:30px;font-weight:800;color:#0f172a;text-align:center;line-height:1.2;margin-top:6px}
+.tile-title{font-weight:800;font-size:var(--fs-md);color:#0f172a;text-align:center;margin-bottom:2px}
+.tile-big{font-size:var(--fs-2xl);font-weight:800;color:#0f172a;text-align:center;line-height:1.2;margin-top:6px}
 .tile-big .npl{font-size:.8em;padding:2px 18px}
-.tile-sub{text-align:center;font-size:11px;color:#64748b;margin-top:2px}
-table.mini{width:100%;border-collapse:collapse;font-size:12px;margin-top:4px}
+.tile-sub{text-align:center;font-size:var(--fs-xs);color:#64748b;margin-top:2px}
+table.mini{width:100%;border-collapse:collapse;font-size:var(--fs-sm);margin-top:4px}
 table.mini th{text-align:left;color:#475569;font-weight:700;border-bottom:1px solid #cbd5e1;padding:4px 6px}
 table.mini td{padding:5px 6px;border-bottom:1px solid #f1f5f9;color:#0f172a}
 table.mini .num{text-align:right;white-space:nowrap}
 table.mini tr.total td{font-weight:800;border-top:1px solid #cbd5e1;border-bottom:0}
 .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px}
 """
-
 
 def _badge(p):
     return f'<span class="npl npl-{D.npl_level(p)}">{"-" if p is None else D.fmt_pct(p)}</span>'
@@ -551,7 +581,7 @@ def _dashboard_ringkas(df):
             v = w.groupby("_t")["PLAFOND"].sum().reindex(days).fillna(0)
             fig = go.Figure(go.Scatter(
                 x=days, y=v.values, mode="lines+markers+text", text=[ui.compact_rp(x) for x in v.values],
-                textposition="top center", textfont=dict(size=10), fill="tozeroy", fillcolor="rgba(147,197,253,.55)",
+                textposition="top center", textfont=dict(size=11), fill="tozeroy", fillcolor="rgba(147,197,253,.55)",
                 line=dict(color=BRAND, width=2.5, shape="spline"), marker=dict(size=7, color="#0f172a"),
                 hovertemplate="%{x|%d %b %Y}<br>Rp %{y:,.0f}<extra></extra>"))
             fig.update_xaxes(tickformat="%d %b", tickmode="array", tickvals=days, tickangle=-45)
@@ -578,11 +608,11 @@ def _dashboard_ringkas(df):
         o = df.groupby("PRODUCT_OWNER", as_index=False)["OUTSTANDING"].sum()
         fig = px.pie(o, names="PRODUCT_OWNER", values="OUTSTANDING", hole=0.55, color="PRODUCT_OWNER",
                      color_discrete_map={n: color(n) for n in segs}, category_orders={"PRODUCT_OWNER": segs})
-        fig.update_traces(textinfo="percent", textfont_size=10, sort=False,
+        fig.update_traces(textinfo="percent", textfont_size=11, sort=False,
                           hovertemplate="%{label}<br>Rp %{value:,.0f}<extra></extra>")
         ui.style_fig(fig, H_ROW - 54)
         fig.update_layout(showlegend=True, legend=dict(orientation="h", yanchor="top", y=-0.02, xanchor="center",
-                                                       x=0.5, font=dict(size=9), title_text=""))
+                                                       x=0.5, font=dict(size=10), title_text=""))
         ui.show_fig(fig)
 
 
@@ -609,6 +639,10 @@ def page_dashboard():
         _dashboard_ringkas(df)
         return
 
+    with st.container(border=False, key="tile_trend"):
+        _trend_section(df)
+    st.write("")
+
     plafond, outstanding = df["PLAFOND"].sum(), df["OUTSTANDING"].sum()
     npl_p = D.npl_pct(df)
     ui.kpis([
@@ -621,9 +655,6 @@ def page_dashboard():
     ])
     if "IS_NPL" not in df.columns:
         st.caption(f"NPL % tidak dapat dihitung: kolom {KOL_COLUMN} tidak ada di data.")
-
-    with st.container(border=False, key="tile_trend"):
-        _trend_section(df)
     st.write("")
 
     # Kartu per segmen (maks. 4 per baris; kolom otomatis turun baris di layar sempit)
