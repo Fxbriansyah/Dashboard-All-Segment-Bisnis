@@ -139,9 +139,6 @@ def prepare_data(raw):
     parsed = parse_dates(tgl)
     parsed = parsed.fillna(day_to_date(tgl, df["TAHUN PENCAIRAN"], df["BULAN_PENCAIRAN"]))
     df["TANGGAL_PENCAIRAN"] = parsed
-    # Kolom berisi hanya nomor hari (1-31): susun tanggal lengkap dari TAHUN + BULAN + hari.
-    parsed = parsed.fillna(day_to_date(tgl, df["TAHUN PENCAIRAN"], df["BULAN_PENCAIRAN"]))
-    df["TANGGAL_PENCAIRAN"] = parsed
     
     # Flag NPL dari kolektabilitas (angka 3-5; "3", "3.0", "Kol 3" semuanya terbaca).
     if KOL_COLUMN in df.columns:

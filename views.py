@@ -117,29 +117,48 @@ def _upload_db():
 
 
 # ======================= 2. PROSES =======================
+def _fmt_size(n):
+    """Ukuran file: 95420000 -> '91,0 MB'."""
+    for div, unit in ((1024 ** 2, "MB"), (1024, "KB")):
+        if n >= div:
+            return f"{n / div:,.1f} {unit}".replace(".", ",")
+    return f"{n} B"
+
+
 def page_processing():
     ui.stepper(1)
-    ui.page_header("Memproses data")
+    ui.page_header("Memproses data", "Mohon tunggu, file sedang dibaca dan dibersihkan. Jangan tutup halaman ini.")
     pending = st.session_state.get("_pending")
     if not pending:
         go_to("upload")
     raw_bytes, digest, name = pending
 
     problem = None
-    with st.status("Memproses file...", expanded=True) as status:
-        try:
-            st.write("Membaca file Excel")
-            raw = D.read_excel_bytes(raw_bytes)
-            st.write("Memeriksa kolom wajib")
-            missing = D.validate_columns(raw)
-            if missing:
-                problem = "Kolom wajib belum ada:\n" + "\n".join(missing)
-            else:
-                st.write("Membersihkan & mengonversi tipe data")
-                df = D.prepare_data(raw)
-        except Exception as e:  # noqa: BLE001
-            problem = f"File tidak bisa dibaca: {e}"
-        status.update(label="Gagal memproses file" if problem else "Selesai", state="error" if problem else "complete")
+    for _ in range(3):   # timpa sisa elemen halaman upload (uploader redup) selama proses berjalan
+        st.empty()
+    with st.container(border=True, key="proc-card"):
+        st.markdown(
+            f'<div class="proc-file"><div class="proc-ico">📄</div>'
+            f'<div><b>{html.escape(name)}</b><small>{_fmt_size(len(raw_bytes))}</small></div></div>',
+            unsafe_allow_html=True)
+        st.markdown("**Kolom wajib di file:**")
+        st.markdown('<div class="proc-cols">' + "".join(f"<span>{c}</span>" for c in REQUIRED_COLUMNS) + "</div>",
+                    unsafe_allow_html=True)
+        with st.status("Memproses file...", expanded=True) as status:
+            try:
+                st.write("Membaca file Excel (file besar bisa memakan waktu)")
+                raw = D.read_excel_bytes(raw_bytes)
+                st.write("Memeriksa kolom wajib")
+                missing = D.validate_columns(raw)
+                if missing:
+                    problem = "Kolom wajib belum ada:\n" + "\n".join(missing)
+                else:
+                    st.write("Membersihkan & mengonversi tipe data")
+                    df = D.prepare_data(raw)
+            except Exception as e:  # noqa: BLE001
+                problem = f"File tidak bisa dibaca: {e}"
+            status.update(label="Gagal memproses file" if problem else "Selesai",
+                          state="error" if problem else "complete")
 
     if problem:
         st.error("File tidak sesuai template. Perbaiki file lalu upload lagi.")
@@ -319,13 +338,13 @@ def _daily_rows(s, names):
     return "".join(rows)
 
 def _period_rows(s, names):
-    """Baris produk: nama + NoA, lalu plafond."""
+    """Baris produk: nama, lalu NoA, lalu plafond (tiga baris)."""
     rows = []
     for name in names:
         g = s[s["GROUP_PRODUCT"] == name]
         rows.append(
-            f'<div class="prod"><div class="prod-top"><b>{html.escape(str(name))}</b>'
-            f'<span style="font-size:var(--fs-md);font-weight:700">NoA {D.fmt_num(len(g))}</span></div>'
+            f'<div class="prod"><div class="prod-top"><b>{html.escape(str(name))}</b></div>'
+            f'<div class="prod-meta"><span>NoA</span><b>{D.fmt_num(len(g))}</b></div>'
             f'<div class="prod-meta"><span>Plafond</span><b>{_rp(g["PLAFOND"].sum())}</b></div></div>')
     return "".join(rows)
 
@@ -335,13 +354,13 @@ def _period_card(d, segment, prefix):
     th = SEGMENT_THEME.get(segment, DEFAULT_THEME)
     s = d[d["PRODUCT_OWNER"] == segment]
     names = list(s.groupby("GROUP_PRODUCT")["PLAFOND"].sum().sort_values(ascending=False).index)
-    key = f"tile_{prefix}_" + "".join(ch if ch.isalnum() else "_" for ch in segment)   # unik per tab
+    key = f"segcard_{prefix}_" + "".join(ch if ch.isalnum() else "_" for ch in segment)   # unik per tab; kartu ber-border (lihat style.css)
     with st.container(border=False, key=key):
         st.markdown(
             f'<div class="seg-head" style="--seg-bg:{th["bg"]};--seg-border:{th["border"]};--seg-color:{th["color"]}">'
             f'<span>{th["icon"]}</span>{segment}</div>'
             f'<div class="seg-stats">'
-            f'<div><span>NoA</span><b style="font-size:var(--fs-xl);line-height:1.2">{D.fmt_num(len(s))}</b></div>'
+            f'<div><span>NoA</span><b>{D.fmt_num(len(s))}</b></div>'
             f'<div><span>Produk</span><b>{D.fmt_num(len(names))}</b></div>'
             f'<div class="wide"><span>Plafond</span><b>{_rp(s["PLAFOND"].sum())}</b></div></div>'
             f'<div class="seg-sub" style="--seg-color:{th["color"]}">Produk cair ({len(names)})</div>'
@@ -352,12 +371,13 @@ def _period_card(d, segment, prefix):
 
 def _period_report(d, segs, prefix, title, empty_msg):
     """Isi satu tab tren: total NoA + plafond, lalu kartu per segmen (hanya segmen yang ada pencairannya)."""
-    st.markdown(f"**{title}**")
+    st.markdown(f'<div class="trend-title">{html.escape(title)}</div>', unsafe_allow_html=True)
     if d.empty:
         st.info(empty_msg)
         return
-    ui.kpis([("Total NoA", D.fmt_num(len(d))),
-             ("Total plafond", _rp(d["PLAFOND"].sum()), "", D.fmt_money(d["PLAFOND"].sum()))])
+    with st.container(key=f"trendkpi_{prefix}"):
+        ui.kpis([("Total NoA", D.fmt_num(len(d))),
+                 ("Total plafond", _rp(d["PLAFOND"].sum()), "", D.fmt_money(d["PLAFOND"].sum()))])
     aktif = [s for s in segs if s in set(d["PRODUCT_OWNER"])]
     with st.container(key=f"segments_{prefix}"):
         for i in range(0, len(aktif), 4):
@@ -369,8 +389,9 @@ def _period_report(d, segs, prefix, title, empty_msg):
 
 def _daily_report(df, segs):
     today = now_wib().date()
-    picked = st.date_input("Tanggal pencairan (pilih satu hari atau rentang)", value=(today, today),
-                           format="DD/MM/YYYY", key="trend_day")
+    with st.container(border=True, key="trendbox_day"):
+        picked = st.date_input("Tanggal pencairan", value=(today, today), format="DD/MM/YYYY",
+                               key="trend_day", help="Pilih satu hari, atau dua tanggal untuk satu rentang.")
     if isinstance(picked, (tuple, list)):
         if len(picked) < 2:   # baru memilih tanggal awal
             st.info("Pilih tanggal akhir untuk melengkapi rentang.")
@@ -400,12 +421,13 @@ def _year_options(df, now):
 def _monthly_report(df, segs):
     now = now_wib()
     years = _year_options(df, now)
-    c1, c2, _ = st.columns([1, 1, 3])
-    year = c1.selectbox("Tahun", years, index=years.index(now.year), key="trend_m_year")
-    month = c2.selectbox("Bulan", list(range(1, 13)), index=now.month - 1,
-                         format_func=D.fmt_bulan, key="trend_m_month")
+    with st.container(border=True, key="trendbox_month"):
+        c1, c2 = st.columns(2)
+        year = c1.selectbox("Tahun", years, index=years.index(now.year), key="trend_m_year")
+        month = c2.selectbox("Bulan", list(range(1, 13)), index=now.month - 1,
+                             format_func=D.fmt_bulan, key="trend_m_month")
     d = df[(df["TAHUN PENCAIRAN"] == year) & (df["BULAN_PENCAIRAN"] == month)]
-    suffix = " (bulan berjalan)" if (year, month) == (now.year, now.month) else ""
+    suffix = "" if (year, month) == (now.year, now.month) else ""
     _period_report(d, segs, "month", f"Pencairan {D.fmt_bulan(month)} {year}{suffix}",
                    "Tidak ada pencairan pada bulan ini dengan filter yang dipilih.")
 
@@ -413,10 +435,10 @@ def _monthly_report(df, segs):
 def _yearly_report(df, segs):
     now = now_wib()
     years = _year_options(df, now)
-    c1, _ = st.columns([1, 4])
-    year = c1.selectbox("Tahun", years, index=years.index(now.year), key="trend_y_year")
+    with st.container(border=True, key="trendbox_year"):
+        year = st.selectbox("Tahun", years, index=years.index(now.year), key="trend_y_year")
     d = df[df["TAHUN PENCAIRAN"] == year]
-    suffix = " (tahun berjalan)" if year == now.year else ""
+    suffix = "" if year == now.year else ""
     _period_report(d, segs, "year", f"Pencairan tahun {year}{suffix}",
                    "Tidak ada pencairan pada tahun ini dengan filter yang dipilih.")
 
@@ -439,26 +461,46 @@ def _reset_filters():
         st.session_state[k] = []
 
 
+def _side_label(icon, text):
+    st.markdown(f'<div class="side-label"><i>{icon}</i>{text}</div>', unsafe_allow_html=True)
+
+
 def _sidebar_filters(df0):
-    """Filter + pilihan tampilan (Ringkas / Rinci) di sidebar."""
-    caption = f"Sumber: {st.session_state.get('file_name', '-')} · kolom identitas sensitif tidak ditampilkan di tabel."
+    """Filter + pilihan tampilan (Ringkas / Rinci) di sidebar, dikelompokkan dalam kartu."""
+    fname = html.escape(str(st.session_state.get("file_name", "-")))
     with st.sidebar:
-        st.markdown('<div class="side-title">Filter data</div>'
-                    '<div class="side-desc">Atur tampilan dan saring data dashboard.</div>', unsafe_allow_html=True)
-        st.segmented_control("Tampilan", ["Ringkas", "Rinci"], key="view_mode", width="stretch",
-                             format_func=lambda m: {"Ringkas": "▦ Ringkas", "Rinci": "☰ Rinci"}[m])
-        st.caption("Ringkas: semua tile dalam satu layar. Rinci: lengkap dengan kartu segmen, grafik, dan tabel.")
-        st.multiselect("Status loan", sorted(df0["STATUS_LOAN"].unique()), key="f_status",
-                       format_func=D.fmt_status, placeholder="Semua")
-        aktif = sum(bool(st.session_state.get(k)) for k in FILTER_KEYS)
-        info = f"dari {D.fmt_num(len(df0))} record" + (f" · {aktif} filter aktif" if aktif else "")
-        st.markdown(f'<div class="side-result"><span>Data ditampilkan</span>'
-                    f'<b>{D.fmt_num(len(_apply_filters(df0)))}</b><small>{info}</small></div>',
+        with st.container(border=True, key="side_view"):
+            _side_label("▦", "Tampilan")
+            st.segmented_control("Tampilan", ["Ringkas", "Rinci"], key="view_mode", width="stretch",
+                                 label_visibility="collapsed",
+                                 format_func=lambda m: {"Ringkas": "▦ Ringkas", "Rinci": "☰ Rinci"}[m])
+            st.caption("Ringkas: semua tile dalam satu layar. Rinci: lengkap dengan kartu segmen, grafik, dan tabel.")
+
+        with st.container(border=True, key="side_filter"):
+            _side_label("⚙", "Saring data")
+            st.multiselect("Status loan", sorted(df0["STATUS_LOAN"].unique()), key="f_status",
+                           format_func=D.fmt_status, placeholder="Semua status")
+            picked = st.session_state.get("f_status") or []
+            if picked:
+                st.markdown('<div class="side-chips">' + "".join(
+                    f"<span>Status {html.escape(D.fmt_status(c))}</span>" for c in picked) + "</div>",
                     unsafe_allow_html=True)
-        st.button("Reset filter", on_click=_reset_filters, width="stretch", disabled=not aktif)
-        if st.button("Upload ulang", width="stretch"):
+
+        aktif = sum(bool(st.session_state.get(k)) for k in FILTER_KEYS)
+        total, shown = len(df0), len(_apply_filters(df0))
+        pct = shown / total * 100 if total else 0
+        info = f"dari {D.fmt_num(total)} record" + (f" · {aktif} filter aktif" if aktif else "")
+        st.markdown(f'<div class="side-result"><span>Data ditampilkan</span>'
+                    f'<b>{D.fmt_num(shown)}</b><small>{info}</small>'
+                    f'<div class="side-bar"><div style="width:{pct:.1f}%"></div></div>'
+                    f'<small>{D.fmt_pct(pct)} dari seluruh data</small></div>',
+                    unsafe_allow_html=True)
+        
+        if st.button("Upload ulang", icon=":material/upload_file:", width="stretch"):
             reset_all()
-        st.caption(caption)
+        st.markdown(f'<div class="side-source"><i>📄</i><div><b>{fname}</b>'
+                    f'<small>Kolom identitas sensitif tidak ditampilkan di tabel.</small></div></div>',
+                    unsafe_allow_html=True)
 
 
 def _apply_filters(df0):
@@ -633,7 +675,7 @@ def page_dashboard():
     st.write("")
     df = _apply_filters(df0)
     if df.empty:
-        st.info("Tidak ada data untuk filter ini. Ubah atau reset filter di sidebar.")
+        st.info("Tidak ada data untuk filter ini.")
         return
     if ringkas:
         _dashboard_ringkas(df)

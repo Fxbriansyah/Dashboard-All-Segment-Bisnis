@@ -129,7 +129,7 @@ span[data-baseweb="tag"] { background: var(--brand-soft) !important; color: var(
 
 /* Sidebar filter */
 section[data-testid="stSidebar"] [data-testid="stSidebarUserContent"] { padding-top: .25rem; }
-section[data-testid="stSidebar"] [data-testid="stVerticalBlock"] { gap: .8rem; }
+section[data-testid="stSidebar"] [data-testid="stVerticalBlock"] { gap: 1.1rem; }
 section[data-testid="stSidebar"] label p { font-size: var(--fs-sm); font-weight: 600; color: var(--muted); }
 .side-title { font-size: var(--fs-lg); font-weight: 800; letter-spacing: -.01em; margin-top: 4px; }
 .side-desc { font-size: var(--fs-sm); color: var(--muted); margin: 2px 0 4px; }
@@ -138,9 +138,9 @@ section[data-testid="stSidebar"] label p { font-size: var(--fs-sm); font-weight:
 .side-result b { font-size: var(--fs-xl); font-weight: 800; color: var(--brand); font-variant-numeric: tabular-nums; }
 .side-result small { font-size: var(--fs-xs); color: var(--muted); }
 
-/* Rapatkan jarak atas sidebar (logo -> Filter data) */
-[data-testid="stSidebarHeader"] { padding-bottom: 0 !important; margin-bottom: 0 !important; }
-[data-testid="stSidebarUserContent"] { padding-top: 0 !important; }
+/* Jarak atas sidebar (logo -> kartu pertama) */
+[data-testid="stSidebarHeader"] { padding-bottom: .5rem !important; margin-bottom: 0 !important; }
+[data-testid="stSidebarUserContent"] { padding-top: 1rem !important; }
 
 /* ===== Override & tambahan (sebelumnya EXTRA_CSS di ui.py) ===== */
 /* Sembunyikan bilah atas Streamlit (Deploy, menu titik tiga, garis warna, status "Running").
@@ -187,3 +187,99 @@ section[data-testid="stSidebar"] label p { font-size: var(--fs-sm); font-weight:
 button[data-baseweb="tab"] p{font-size:var(--fs-md) !important}
 [data-testid="stCaptionContainer"],[data-testid="stCaptionContainer"] p{font-size:var(--fs-sm) !important}
 [data-testid="stWidgetLabel"] p{font-size:var(--fs-sm) !important}
+/* Halaman proses: satu kartu berisi info file + progres, tinggi minimum supaya tidak terlihat kosong */
+.st-key-proc-card{min-height:360px}
+.proc-file{display:flex;align-items:center;gap:12px;padding:4px 0 8px}
+.proc-ico{flex:none;width:44px;height:44px;border-radius:10px;background:var(--brand-soft);display:grid;place-items:center;font-size:1.3rem}
+.proc-file b{display:block;font-size:var(--fs-md);overflow-wrap:anywhere}
+.proc-file small{color:var(--muted);font-size:var(--fs-sm)}
+.proc-cols{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 12px}
+.proc-cols span{font-size:var(--fs-xs);font-family:ui-monospace,Consolas,monospace;background:#f6f8fc;border:1px solid var(--border);border-radius:6px;padding:2px 8px;color:var(--muted)}
+
+/* Nilai Rupiah (<span> dari _rp) di dalam <b> ikut ukuran & warna angka di sekitarnya, bukan gaya label */
+.kpi b span,.seg-stats b span,.prod-meta b span,.prod-row b span{display:inline !important;font-size:inherit !important;color:inherit !important;font-weight:inherit !important}
+
+/* ===== Tren pencairan: judul, KPI, dan kartu segmen (ukuran satu skala, lebih besar) ===== */
+.trend-title{font-size:1.125rem;font-weight:800;color:#0f172a;margin:14px 0 12px;padding-left:10px;border-left:4px solid var(--brand);line-height:1.3}
+[class*="st-key-trendkpi_"] .kpi{padding:14px 18px}
+[class*="st-key-trendkpi_"] .kpi>span{font-size:.875rem !important}
+[class*="st-key-trendkpi_"] .kpi b{font-size:1.625rem !important}
+
+/* Kartu pembatas per segmen */
+[class*="st-key-segcard_"]{background:#f8fafc;border:1.5px solid #cbd5e1;border-radius:18px;padding:16px !important;
+  box-shadow:0 1px 3px rgba(15,23,42,.08);box-sizing:border-box}
+[class*="st-key-segcard_"] .seg-head{font-size:1rem;padding:12px 16px}
+[class*="st-key-segcard_"] .seg-stats{gap:10px;margin-bottom:10px}
+[class*="st-key-segcard_"] .seg-stats>div{background:#fff;padding:10px 14px}
+[class*="st-key-segcard_"] .seg-stats>div>span{font-size:.875rem !important}
+[class*="st-key-segcard_"] .seg-stats b{font-size:1.625rem;line-height:1.25}
+[class*="st-key-segcard_"] .seg-stats .wide b{font-size:1.25rem}
+[class*="st-key-segcard_"] .seg-sub{font-size:.875rem;margin:8px 0 0 4px}
+[class*="st-key-segcard_"] .prod-list{background:#eef2f8}
+[class*="st-key-segcard_"] .prod-top b{font-size:1rem}
+[class*="st-key-segcard_"] .prod-top span{font-size:.875rem}
+[class*="st-key-segcard_"] .prod-meta{font-size:.875rem}
+[class*="st-key-segcard_"] .prod-meta>span{font-size:.875rem !important}
+
+/* ===== Sidebar filter: header, kartu kelompok, hasil, sumber ===== */
+.side-hero{display:flex;align-items:center;gap:12px;padding:12px 14px;margin-bottom:4px;border-radius:14px;
+  background:linear-gradient(135deg,var(--brand-soft),#fff);border:1px solid #d6e2ff;border-left:4px solid var(--brand)}
+.side-ico{flex:none;width:40px;height:40px;border-radius:12px;background:var(--brand);display:grid;place-items:center;font-size:1.15rem}
+.side-hero .side-title{margin:0;font-size:1.0625rem}
+.side-hero .side-desc{margin:1px 0 0}
+.st-key-side_view,.st-key-side_filter{padding:12px 14px !important}
+.side-label{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:var(--fs-sm);font-weight:800;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--brand)}
+.side-label i{font-style:normal;width:22px;height:22px;border-radius:7px;background:var(--brand-soft);display:grid;place-items:center;font-size:.8rem}
+.side-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
+.side-chips span{font-size:var(--fs-xs);font-weight:700;color:var(--brand);background:var(--brand-soft);border:1px solid #d6e2ff;border-radius:999px;padding:3px 10px}
+.side-bar{height:8px;margin:8px 0 3px;background:#dbe6ff;border-radius:99px;overflow:hidden}
+.side-bar div{height:100%;background:linear-gradient(90deg,var(--brand),#60a5fa);border-radius:99px}
+.side-source{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px dashed #c5cedb;border-radius:12px;background:#fff}
+.side-source i{font-style:normal;font-size:1.1rem}
+.side-source b{display:block;font-size:var(--fs-sm);overflow-wrap:anywhere}
+.side-source small{display:block;margin-top:2px;font-size:var(--fs-xs);color:var(--muted);line-height:1.4}
+
+/* ===== Tren pencairan: tab bergaya pill + input tanggal rapi ===== */
+.st-key-tile_trend [data-baseweb="tab-list"]{display:inline-flex;gap:4px;padding:4px;background:#f1f5f9;border-radius:12px;margin-bottom:16px}
+.st-key-tile_trend [data-baseweb="tab-highlight"],.st-key-tile_trend [data-baseweb="tab-border"]{display:none !important}
+.st-key-tile_trend button[data-baseweb="tab"]{height:auto;padding:7px 20px;border-radius:9px;background:transparent;transition:background .15s,color .15s}
+.st-key-tile_trend button[data-baseweb="tab"] p{font-weight:700;color:var(--muted)}
+.st-key-tile_trend button[data-baseweb="tab"]:hover p{color:var(--ink)}
+.st-key-tile_trend button[data-baseweb="tab"][aria-selected="true"]{background:var(--brand)}
+.st-key-tile_trend button[data-baseweb="tab"][aria-selected="true"] p{color:#fff}
+.st-key-tile_trend [data-testid="stDateInput"] label p,.st-key-tile_trend [data-testid="stSelectbox"] label p{font-size:var(--fs-sm) !important;font-weight:700;color:var(--muted)}
+.st-key-tile_trend [data-testid="stDateInput"] [data-baseweb="input"],.st-key-tile_trend [data-testid="stSelectbox"] [data-baseweb="select"]>div{border-radius:10px;border:1px solid var(--border);background:#f8fafc}
+.st-key-tile_trend [data-testid="stDateInput"] input{font-size:var(--fs-md);font-weight:600;text-align:center}
+
+/* Input filter periode: kotak berbingkai jelas supaya terlihat sebagai filter */
+.st-key-tile_trend [data-testid="stDateInput"] [data-baseweb="input"],.st-key-tile_trend [data-testid="stSelectbox"] [data-baseweb="select"]>div{background:#fff;border:1.5px solid #cbd5e1;border-radius:10px;box-shadow:0 1px 2px rgba(15,23,42,.05)}
+.st-key-tile_trend [data-testid="stDateInput"] [data-baseweb="input"]:hover,.st-key-tile_trend [data-testid="stSelectbox"] [data-baseweb="select"]>div:hover,
+.st-key-tile_trend [data-testid="stDateInput"] [data-baseweb="input"]:focus-within{border-color:var(--brand)}
+
+/* Kotak pembungkus filter periode (hanya area tanggal / tahun-bulan) */
+[class*="st-key-trendbox_"]{padding:12px 14px !important;background:#f8fafc !important;border:1px solid var(--border) !important;border-radius:14px !important;box-shadow:none !important}
+[class*="st-key-trendbox_"] [data-testid="stVerticalBlock"]{gap:.4rem}
+
+/* Kotak filter periode di kanan atas, sejajar judul "Tren pencairan" dan tab; label dan input satu baris */
+.st-key-tile_trend{position:relative}
+[class*="st-key-trendbox_"]{position:absolute;top:14px;right:44px;z-index:5;box-sizing:border-box;
+  padding:10px 16px !important;border-radius:12px !important}
+[class*="st-key-trendbox_"] [data-testid="stDateInput"],[class*="st-key-trendbox_"] [data-testid="stSelectbox"]{
+  display:flex;flex-direction:row;align-items:center;gap:14px}
+[class*="st-key-trendbox_"] [data-testid="stWidgetLabel"]{min-height:0;margin:0;width:auto;white-space:nowrap}
+[class*="st-key-trendbox_"] [data-baseweb="input"],[class*="st-key-trendbox_"] [data-baseweb="select"]{flex:1;min-width:0}
+[class*="st-key-trendbox_"] [data-baseweb="input"],[class*="st-key-trendbox_"] [data-baseweb="select"]>div{min-height:38px}
+[class*="st-key-trendbox_"] [data-testid="stDateInput"]>div:not([data-testid="stWidgetLabel"]),[class*="st-key-trendbox_"] [data-testid="stSelectbox"]>div:not([data-testid="stWidgetLabel"]){flex:1;min-width:0}
+.st-key-trendbox_day{width:440px}
+.st-key-trendbox_month{width:520px}
+.st-key-trendbox_year{width:320px}
+/* Layar sempit: kembali ke alur normal (di bawah tab) supaya tidak menimpa judul */
+@media (max-width: 900px){
+  [class*="st-key-trendbox_"]{position:static;width:100% !important}
+}
+
+/* Rapatkan jarak antara garis tab dan judul "Pencairan ..." */
+.st-key-tile_trend [data-baseweb="tab-list"]{margin-bottom:0 !important}
+.st-key-tile_trend [data-baseweb="tab-panel"]{padding-top:0 !important}
+.st-key-tile_trend .trend-title{margin-top:0px !important}
