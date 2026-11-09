@@ -62,14 +62,14 @@ def kpis(items):
 
 def style_fig(fig, height=340, legend_bottom=False):
     """Gaya chart seragam: transparan, font sama, tanpa judul sumbu, format angka Indonesia."""
-    fig.update_layout(height=height, margin=dict(l=8, r=8, t=8, b=8), font=dict(size=11, family="Plus Jakarta Sans"),
+    fig.update_layout(height=height, margin=dict(l=8, r=8, t=8, b=8), font=dict(size=14, family="Plus Jakarta Sans"),
                       paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", autosize=True,
                       separators=",.")   # desimal koma, ribuan titik
     fig.update_xaxes(automargin=True, title_text="", showgrid=False)
     fig.update_yaxes(automargin=True, title_text="", gridcolor="#eef1f6")
     if legend_bottom:
         fig.update_layout(legend=dict(orientation="h", yanchor="top", y=-0.05, xanchor="center", x=0.5,
-                                      font=dict(size=10), title_text=""))
+                                      font=dict(size=14), title_text=""))
     return fig
 
 

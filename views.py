@@ -322,7 +322,7 @@ def _trend_chart(d, x, order, metric, segs, kind="Garis", xfmt=None, date_axis=F
     # legenda di atas grafik (di bawah bertabrakan dengan label sumbu X yang miring)
     fig.update_layout(margin=dict(l=8, r=8, t=tmargin, b=8),
                       legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0,
-                                  font=dict(size=11 if tmargin >= 40 else 10), title_text=""))
+                                  font=dict(size=14), title_text=""))
     ui.show_fig(fig)
 
 def _daily_rows(s, names):
@@ -623,7 +623,7 @@ def _dashboard_ringkas(df):
             v = w.groupby("_t")["PLAFOND"].sum().reindex(days).fillna(0)
             fig = go.Figure(go.Scatter(
                 x=days, y=v.values, mode="lines+markers+text", text=[ui.compact_rp(x) for x in v.values],
-                textposition="top center", textfont=dict(size=11), fill="tozeroy", fillcolor="rgba(147,197,253,.55)",
+                textposition="top center", textfont=dict(size=14), fill="tozeroy", fillcolor="rgba(147,197,253,.55)",
                 line=dict(color=BRAND, width=2.5, shape="spline"), marker=dict(size=7, color="#0f172a"),
                 hovertemplate="%{x|%d %b %Y}<br>Rp %{y:,.0f}<extra></extra>"))
             fig.update_xaxes(tickformat="%d %b", tickmode="array", tickvals=days, tickangle=-45)
@@ -650,11 +650,11 @@ def _dashboard_ringkas(df):
         o = df.groupby("PRODUCT_OWNER", as_index=False)["OUTSTANDING"].sum()
         fig = px.pie(o, names="PRODUCT_OWNER", values="OUTSTANDING", hole=0.55, color="PRODUCT_OWNER",
                      color_discrete_map={n: color(n) for n in segs}, category_orders={"PRODUCT_OWNER": segs})
-        fig.update_traces(textinfo="percent", textfont_size=11, sort=False,
+        fig.update_traces(textinfo="percent", textfont_size=14, sort=False,
                           hovertemplate="%{label}<br>Rp %{value:,.0f}<extra></extra>")
         ui.style_fig(fig, H_ROW - 54)
         fig.update_layout(showlegend=True, legend=dict(orientation="h", yanchor="top", y=-0.02, xanchor="center",
-                                                       x=0.5, font=dict(size=10), title_text=""))
+                                                       x=0.5, font=dict(size=14), title_text=""))
         ui.show_fig(fig)
 
 
@@ -761,7 +761,7 @@ def page_dashboard():
         fig = px.bar(long, x="PRODUCT_OWNER", y="Nilai", color="Jenis", barmode="group", text="Label",
                      category_orders={"PRODUCT_OWNER": list(pv["PRODUCT_OWNER"]), "Jenis": ["Plafond", "Outstanding"]},
                      color_discrete_map={"Plafond": BRAND, "Outstanding": BRAND_LIGHT})
-        fig.update_traces(textposition="outside", cliponaxis=False, textfont=dict(size=11),
+        fig.update_traces(textposition="outside", cliponaxis=False, textfont=dict(size=14),
                           hovertemplate="%{x}<br>%{fullData.name}: Rp %{y:,.0f}<extra></extra>")
         fig.update_layout(bargap=0.35, bargroupgap=0.08)
         ui.rupiah_axis(fig, long["Nilai"].max() * 1.12)
