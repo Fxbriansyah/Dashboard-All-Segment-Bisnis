@@ -289,3 +289,95 @@ button[data-baseweb="tab"] p{font-size:var(--fs-md) !important}
 [data-testid="stWidgetLabel"] p, [data-baseweb="select"] div, [data-baseweb="tag"] span,
 [data-testid="stFileUploader"] small, [data-testid="stFileUploader"] span,
 [data-testid="stAlert"] p, [data-testid="stExpander"] summary p, button p, input { font-size: var(--fs-md); }
+/* =====================================================================
+   RESPONSIF (tambahan) - tampilan di layar lebar tetap sama dengan desain awal.
+   Prinsip: tinggi tile jadi "minimal" (bukan tetap), angka & tabel mengecil otomatis
+   sesuai lebar tile (container query), dan baris tile boleh turun baris di layar sempit.
+   Konstanta penyesuaian: --fit-money, --fit-mini, --fit-seg (makin besar = font makin kecil).
+   ===================================================================== */
+:root { --fit-money: 12.6; --fit-mini: 24; --fit-seg: 42; }
+
+/* 1) Tile Ringkas: tinggi = minimal (sebelumnya dipaksa tetap sehingga isi terpotong) */
+[class*="st-key-tile_kpi"], .st-key-tile_tren, .st-key-tile_segmen, .st-key-tile_mingguan,
+.st-key-tile_topproduk, .st-key-tile_nplproduk, .st-key-tile_donut {
+  height: auto !important; max-height: none !important; overflow: visible !important;
+  min-height: 270px; container-type: inline-size;
+}
+[class*="st-key-tile_kpi"] { min-height: 124px; }
+:is([class*="st-key-tile_kpi"], .st-key-tile_tren, .st-key-tile_segmen, .st-key-tile_mingguan,
+    .st-key-tile_topproduk, .st-key-tile_nplproduk, .st-key-tile_donut) > [data-testid="stVerticalBlock"] {
+  height: auto !important; max-height: none !important; overflow: visible !important;
+}
+
+/* 2) Angka Rupiah mengecil sesuai lebar tile (satu baris, tidak patah "Rp" / angka) */
+.tile-big > span:not(.npl) {
+  display: inline-block; white-space: nowrap;
+  font-size: clamp(.85rem, calc(100cqw / var(--fit-money)), var(--fs-2xl));
+}
+.kpis .kpi { container-type: inline-size; }
+.kpis .kpi b > span:not(.npl) {
+  display: inline-block !important; white-space: nowrap;
+  font-size: clamp(.85rem, calc(100cqw / var(--fit-money)), var(--fs-xl)) !important;
+}
+
+/* 3) Tabel mini ikut mengecil; tabel segmen boleh di-scroll mendatar sebagai pengaman */
+.st-key-tile_topproduk table.mini, .st-key-tile_nplproduk table.mini {
+  font-size: clamp(.7rem, calc((100cqw - 2.2rem) / var(--fit-mini)), var(--fs-sm));
+}
+.st-key-tile_segmen table.mini {
+  font-size: clamp(.7rem, calc((100cqw - 3.75rem) / var(--fit-seg)), var(--fs-sm));
+}
+[data-testid="stMarkdownContainer"]:has(table.mini) { overflow-x: auto; scrollbar-width: thin; }
+
+/* 4) Label angka di grafik 7 hari ikut mengecil di tile sempit */
+.st-key-tile_mingguan .textpoint text { font-size: clamp(8px, 3.2cqw, 14px) !important; }
+
+/* 5) Baris tile boleh turun baris (pakai :has, jadi tidak perlu ubah views.py) */
+[data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"] [class*="st-key-tile_kpi"]),
+[data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"] .st-key-tile_tren),
+[data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"] .st-key-tile_mingguan),
+[data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"] .title-card) {
+  flex-wrap: wrap !important; row-gap: .7rem;
+}
+[data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"] [class*="st-key-tile_kpi"]) > [data-testid="stColumn"] {
+  flex: 1 1 0 !important; width: auto !important; min-width: min(170px, 100%) !important;
+}
+[data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"] .st-key-tile_tren) > [data-testid="stColumn"]:nth-child(1) {
+  flex: 2 1 400px !important; width: auto !important; min-width: min(400px, 100%) !important;
+}
+[data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"] .st-key-tile_tren) > [data-testid="stColumn"]:nth-child(2) {
+  flex: 1.2 1 240px !important; width: auto !important; min-width: min(360px, 100%) !important;
+}
+[data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"] .st-key-tile_mingguan) > [data-testid="stColumn"] {
+  flex: 1 1 0 !important; width: auto !important; min-width: min(240px, 100%) !important;
+}
+[data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"] .title-card) > [data-testid="stColumn"]:nth-child(1) {
+  flex: 4 1 320px !important; width: auto !important; min-width: min(320px, 100%) !important;
+}
+[data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"] .title-card) > [data-testid="stColumn"]:nth-child(2) {
+  flex: 1 1 80px !important; width: auto !important; min-width: min(190px, 100%) !important;
+}
+
+/* 6) Breakpoint: laptop / tablet */
+@media (max-width: 1200px) {
+  /* kotak filter periode (Rinci) kembali ke alur normal lebih awal supaya tidak menimpa tab */
+  [class*="st-key-trendbox_"] { position: static; width: 100% !important; }
+}
+@media (max-width: 1100px) {
+  /* KPI 3+2, tren & ringkasan segmen bertumpuk, 4 tile kecil jadi 2x2 */
+  [data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"] [class*="st-key-tile_kpi"]) > [data-testid="stColumn"] {
+    flex: 1 1 calc(33.33% - 1rem) !important; }
+  [data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"] .st-key-tile_tren) > [data-testid="stColumn"] {
+    flex: 1 1 100% !important; }
+  [data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"] .st-key-tile_mingguan) > [data-testid="stColumn"] {
+    flex: 1 1 calc(50% - 1rem) !important; }
+}
+/* 7) Breakpoint: HP */
+@media (max-width: 640px) {
+  [data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"] [class*="st-key-tile_kpi"]) > [data-testid="stColumn"] {
+    flex: 1 1 calc(50% - 1rem) !important; }
+  [data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"] .st-key-tile_mingguan) > [data-testid="stColumn"],
+  [data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"] .title-card) > [data-testid="stColumn"] {
+    flex: 1 1 100% !important; }
+  .prod-list { height: 260px; }
+}

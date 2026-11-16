@@ -18,7 +18,7 @@ HIDE_SIDEBAR_CSS = """
 SHOW_SIDEBAR_CSS = """
 @media (min-width: 769px){
   [data-testid="stSidebar"]{transform:none !important;margin-left:0 !important;visibility:visible !important;
-    width:21rem !important;min-width:21rem !important;max-width:21rem !important}
+    width:clamp(16rem,22vw,21rem) !important;min-width:clamp(16rem,22vw,21rem) !important;max-width:clamp(16rem,22vw,21rem) !important}
   [data-testid="stSidebarCollapseButton"],[data-testid="stSidebarCollapsedControl"],
   [data-testid="stExpandSidebarButton"]{display:none !important}
   /* logo di header halaman utama disembunyikan (logo sudah tampil di sidebar) */
