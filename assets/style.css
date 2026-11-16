@@ -381,3 +381,6 @@ button[data-baseweb="tab"] p{font-size:var(--fs-md) !important}
     flex: 1 1 100% !important; }
   .prod-list { height: 260px; }
 }
+
+/* Judul di dalam kartu (dipakai juga di tampilan Rinci, bukan hanya Ringkas) */
+.tile-title { font-weight: 800; font-size: var(--fs-md); color: #0f172a; text-align: center; margin-bottom: 2px; }

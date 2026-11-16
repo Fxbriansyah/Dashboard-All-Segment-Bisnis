@@ -29,7 +29,7 @@ def now_wib():
 
 SESSION_KEYS = ["stage", "data", "file_hash", "file_name", "processed_at"]
 FILTER_KEYS = ["f_status"]
-CHART_BOX = 400   # tinggi kotak chart di baris tiga chart (px)
+CHART_BOX = 440   # tinggi kartu di baris tiga chart (px), sudah termasuk judul kartu (~40px)
 LEGEND_TALL = 130   # tinggi kotak legenda produk di chart donut (px); sisanya bisa di-scroll
 PROD_LIST_H = 315   # tinggi kotak daftar produk per segmen (px, kira-kira 5 produk); sisanya bisa di-scroll
 TREND_MONTHS, TREND_DAYS = 24, 31   # jumlah bulan / hari terakhir yang ditampilkan di grafik tren
@@ -712,8 +712,8 @@ def page_dashboard():
     with st.container(key="charts"):
         c1, c2, c3 = st.columns(3)
         with c1:
-            st.subheader("Plafond per segmen")
             with st.container(border=False, height=CHART_BOX, key="tile_c1"):
+                _tile_title("Plafond per segmen")
                 pf = (df.groupby("PRODUCT_OWNER", as_index=False)["PLAFOND"].sum()
                       .sort_values("PLAFOND", ascending=False))
                 fig = px.bar(pf, x="PRODUCT_OWNER", y="PLAFOND", color="PRODUCT_OWNER",
@@ -724,10 +724,10 @@ def page_dashboard():
                 fig.update_xaxes(tickvals=list(pf["PRODUCT_OWNER"]),
                                  ticktext=[str(n).replace(" ", "<br>") for n in pf["PRODUCT_OWNER"]], tickangle=0)
                 ui.rupiah_axis(fig, pf["PLAFOND"].max())
-                ui.show_fig(ui.style_fig(fig, CHART_BOX - 48))
+                ui.show_fig(ui.style_fig(fig, CHART_BOX - 88))
         with c2:
-            st.subheader("Outstanding per segmen")
             with st.container(border=False, height=CHART_BOX, key="tile_c2"):
+                _tile_title("Outstanding per segmen")
                 comp = df.groupby("PRODUCT_OWNER")["OUTSTANDING"].sum().sort_values(ascending=False)
                 top = comp.max() or 1
                 rows = "".join(
@@ -737,8 +737,8 @@ def page_dashboard():
                     for n, val in comp.items())
                 st.markdown(f'<div class="hbars">{rows}</div>', unsafe_allow_html=True)
         with c3:
-            st.subheader("Outstanding per group produk")
             with st.container(border=False, height=CHART_BOX, key="tile_c3"):
+                _tile_title("Outstanding per group produk")
                 po = (df.groupby("GROUP_PRODUCT", as_index=False)["OUTSTANDING"].sum()
                       .sort_values("OUTSTANDING", ascending=False))
                 cmap = {n: PRODUCT_COLORS[i % len(PRODUCT_COLORS)] for i, n in enumerate(po["GROUP_PRODUCT"])}
@@ -746,18 +746,18 @@ def page_dashboard():
                              color="GROUP_PRODUCT", color_discrete_map=cmap)
                 fig.update_traces(textinfo="none")
                 fig.update_layout(showlegend=False)
-                fig = ui.style_fig(fig, CHART_BOX - 205)
+                fig = ui.style_fig(fig, CHART_BOX - 245)
                 fig.update_layout(margin=dict(l=10, r=10, t=12, b=12))
                 ui.show_fig(fig)
                 st.markdown(_legend_html(cmap, tall=True), unsafe_allow_html=True)
 
-    st.subheader("Plafond vs outstanding per segmen")
     pv = (df.groupby("PRODUCT_OWNER")[["PLAFOND", "OUTSTANDING"]].sum()
           .sort_values("PLAFOND", ascending=False).reset_index())
     long = pv.melt(id_vars="PRODUCT_OWNER", var_name="Jenis", value_name="Nilai")
     long["Jenis"] = long["Jenis"].str.capitalize()   # Plafond / Outstanding
     long["Label"] = long["Nilai"].map(ui.compact_rp)
     with st.container(border=False, key="tile_pv"):
+        _tile_title("Plafond vs outstanding per segmen")
         fig = px.bar(long, x="PRODUCT_OWNER", y="Nilai", color="Jenis", barmode="group", text="Label",
                      category_orders={"PRODUCT_OWNER": list(pv["PRODUCT_OWNER"]), "Jenis": ["Plafond", "Outstanding"]},
                      color_discrete_map={"Plafond": BRAND, "Outstanding": BRAND_LIGHT})
