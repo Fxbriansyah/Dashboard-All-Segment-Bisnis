@@ -196,8 +196,8 @@ def page_summary():
 
 # ======================= 4. DASHBOARD =======================
 def _rp(x):
-    """Nominal ringkas ('Rp 172,7 T'); nominal penuh muncul saat kursor diarahkan (tooltip)."""
-    return f'<span title="{D.fmt_money(x)}">Rp {ui.compact_rp(float(x or 0))}</span>'
+    """Nominal penuh, tanpa singkatan: 21000000000 -> 'Rp 21.000.000.000'."""
+    return f'<span title="{D.fmt_money(x)}">{D.fmt_money(x)}</span>'
 
 
 def _product_rows(s, names):

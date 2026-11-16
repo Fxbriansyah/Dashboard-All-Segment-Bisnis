@@ -74,23 +74,17 @@ def style_fig(fig, height=340, legend_bottom=False):
 
 
 def short_rp(x):
-    """Singkatan sumbu: 4500000000000 -> '4,5 T', 650000000000 -> '650 M' (M = miliar)."""
-    for div, unit in ((1e12, "T"), (1e9, "M"), (1e6, "Jt")):
-        if abs(x) >= div:
-            return f"{x / div:g} {unit}".replace(".", ",")
-    return f"{x:g}".replace(".", ",")
+    """Label sumbu: nominal penuh tanpa singkatan, mis. 4500000000000 -> '4.500.000.000.000'."""
+    return f"{x:,.0f}".replace(",", ".")
 
 
 def compact_rp(x):
-    """Label ringkas satu desimal: 92729400677204 -> '92,7 T', 647267072927 -> '647,3 M'."""
-    for div, unit in ((1e12, "T"), (1e9, "M"), (1e6, "Jt")):
-        if abs(x) >= div:
-            return f"{x / div:,.1f} {unit}".replace(",", "_").replace(".", ",").replace("_", ".")
+    """Label chart: nominal penuh tanpa singkatan, mis. 92729400677204 -> '92.729.400.677.204'."""
     return f"{x:,.0f}".replace(",", ".")
 
 
 def rupiah_axis(fig, max_value, n=4):
-    """Sumbu Y dengan angka 'bulat' dan satuan Indonesia (Jt / M / T)."""
+    """Sumbu Y dengan angka 'bulat' dan satuan Indonesia (nominal penuh)."""
     if not max_value or max_value <= 0:
         return fig
     raw = max_value / n
