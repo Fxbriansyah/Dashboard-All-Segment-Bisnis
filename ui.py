@@ -61,12 +61,19 @@ def kpis(items):
 
 
 def style_fig(fig, height=340, legend_bottom=False):
-    """Gaya chart seragam: transparan, font sama, tanpa judul sumbu, format angka Indonesia."""
-    fig.update_layout(height=height, margin=dict(l=8, r=8, t=8, b=8), font=dict(size=14, family="Inter"),
+    """Gaya chart seragam: transparan, font sama, grid tipis, tooltip bersih, format angka Indonesia."""
+    fig.update_layout(height=height, margin=dict(l=8, r=8, t=8, b=8),
+                      font=dict(size=14, family="Inter", color="#475569"),
                       paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", autosize=True,
-                      separators=",.")   # desimal koma, ribuan titik
-    fig.update_xaxes(automargin=True, title_text="", showgrid=False)
-    fig.update_yaxes(automargin=True, title_text="", gridcolor="#eef1f6")
+                      separators=",.",   # desimal koma, ribuan titik
+                      hoverlabel=dict(bgcolor="#FFFFFF", bordercolor="#01D298",
+                                      font=dict(family="Inter", size=13, color="#0F172A")))
+    fig.update_xaxes(automargin=True, title_text="", showgrid=False, linecolor="#E2E8F0",
+                     tickfont=dict(color="#64748B"))
+    fig.update_yaxes(automargin=True, title_text="", gridcolor="#EEF2F6", gridwidth=1, zeroline=False,
+                     showline=False, tickfont=dict(color="#64748B"))
+    fig.update_traces(marker_line_color="#FFFFFF", marker_line_width=2, selector=dict(type="pie"))
+    fig.update_layout(uniformtext_minsize=11, uniformtext_mode="hide")   # label irisan kecil disembunyikan
     if legend_bottom:
         fig.update_layout(legend=dict(orientation="h", yanchor="top", y=-0.05, xanchor="center", x=0.5,
                                       font=dict(size=14), title_text=""))

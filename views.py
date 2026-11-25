@@ -12,7 +12,7 @@ import streamlit as st
 import data as D
 import ui
 
-from config import (BRAND, BRAND_LIGHT, DB_CONFIG, DEFAULT_THEME, KOL_COLUMN, NPL_BAD, PRODUCT_COLORS,
+from config import (BRAND, BRAND_DEEP, BRAND_LIGHT, DB_CONFIG, DEFAULT_THEME, KOL_COLUMN, NPL_BAD, PRODUCT_COLORS,
                     REQUIRED_COLUMNS, SAFE_DETAIL_COLUMNS, SEGMENT_ORDER, SEGMENT_THEME)
 
 try:   # zona waktu WIB; butuh paket `tzdata` di Windows
@@ -229,18 +229,18 @@ def segment_card(df, segment):
     key = "tile_seg_" + "".join(ch if ch.isalnum() else "_" for ch in segment)
     with st.container(border=False, key=key):
         st.markdown(
-            f'<div class="seg-head" style="--seg-bg:{th["bg"]};--seg-border:{th["border"]};--seg-color:{th["color"]}">'
+            f'<div class="seg-head" style="--seg-bg:{th["bg"]};--seg-border:{th["border"]};--seg-color:{th.get("ink", th["color"])}">'
             f'<span>{th["icon"]}</span>{segment}</div>'
             f'<div class="seg-stats">'
             f'<div><span>NoA</span><b>{D.fmt_num(len(s))}</b></div>'
             f'<div><span>Produk</span><b>{D.fmt_num(len(names))}</b></div>'
             f'<div class="wide"><span>Plafond</span><b>{_rp(plafond)}</b></div>'
             f'<div class="wide"><span>NPL (kol 3-5)</span><b>{D.npl_badge(s)}</b></div></div>'
-            f'<div class="seg-sub" style="--seg-color:{th["color"]}">Rincian per produk ({len(names)})</div>'
+            f'<div class="seg-sub" style="--seg-color:{th.get("ink", th["color"])}">Rincian per produk ({len(names)})</div>'
             f'<div class="prod-list" style="height:{PROD_LIST_H}px!important;max-height:{PROD_LIST_H}px!important;'
             f'overflow-y:auto!important;overflow-x:hidden!important">{_product_rows(s, names)}</div>',
             unsafe_allow_html=True)
-        st.markdown(f'<div class="seg-sub" style="--seg-color:{th["color"]}">Komposisi group produk</div>',
+        st.markdown(f'<div class="seg-sub" style="--seg-color:{th.get("ink", th["color"])}">Komposisi group produk</div>',
                     unsafe_allow_html=True)
         produk = s.groupby("GROUP_PRODUCT").size().rename("Jumlah").reset_index().sort_values("Jumlah", ascending=False)
         if not produk.empty:
@@ -357,13 +357,13 @@ def _period_card(d, segment, prefix):
     key = f"segcard_{prefix}_" + "".join(ch if ch.isalnum() else "_" for ch in segment)   # unik per tab; kartu ber-border (lihat style.css)
     with st.container(border=False, key=key):
         st.markdown(
-            f'<div class="seg-head" style="--seg-bg:{th["bg"]};--seg-border:{th["border"]};--seg-color:{th["color"]}">'
+            f'<div class="seg-head" style="--seg-bg:{th["bg"]};--seg-border:{th["border"]};--seg-color:{th.get("ink", th["color"])}">'
             f'<span>{th["icon"]}</span>{segment}</div>'
             f'<div class="seg-stats">'
             f'<div><span>NoA</span><b>{D.fmt_num(len(s))}</b></div>'
             f'<div><span>Produk</span><b>{D.fmt_num(len(names))}</b></div>'
             f'<div class="wide"><span>Plafond</span><b>{_rp(s["PLAFOND"].sum())}</b></div></div>'
-            f'<div class="seg-sub" style="--seg-color:{th["color"]}">Produk cair ({len(names)})</div>'
+            f'<div class="seg-sub" style="--seg-color:{th.get("ink", th["color"])}">Produk cair ({len(names)})</div>'
             f'<div class="prod-list" style="height:{PROD_LIST_H}px!important;max-height:{PROD_LIST_H}px!important;'
             f'overflow-y:auto!important;overflow-x:hidden!important">{_period_rows(s, names)}</div>',
             unsafe_allow_html=True)
@@ -442,7 +442,7 @@ def _yearly_report(df, segs):
     _period_report(d, segs, "year", f"Pencairan tahun {year}{suffix}",
                    "Tidak ada pencairan pada tahun ini dengan filter yang dipilih.")
 
-
+@st.fragment
 def _trend_section(df):
     """Pencairan hari ini / bulan berjalan / tahun berjalan, dipecah per segmen dan produk."""
     st.subheader("Tren pencairan")
@@ -511,29 +511,32 @@ def _apply_filters(df0):
 
 
 THEME_CSS = """
-.stApp{background:#19c98f !important}
-[data-testid="stMainBlockContainer"]{padding-top:1.2rem !important;padding-bottom:1rem !important;max-width:100% !important}
-[class*="st-key-tile_"],[data-testid="stExpander"]{background:#fff !important;border:0 !important;
-  border-radius:20px !important;box-shadow:none !important;box-sizing:border-box}
-[class*="st-key-tile_"]{padding:12px 14px !important}
+.stApp{background:#F8FAFC !important}
+[data-testid="stMainBlockContainer"]{padding-top:1.2rem !important;padding-bottom:1.5rem !important;max-width:100% !important}
+[class*="st-key-tile_"],[data-testid="stExpander"]{background:#FFFFFF !important;border:1px solid #E2E8F0 !important;
+  border-radius:16px !important;box-shadow:0 1px 2px rgba(15,23,42,.04),0 6px 18px rgba(15,23,42,.05) !important;
+  box-sizing:border-box;transition:border-color .18s ease,box-shadow .18s ease}
+[class*="st-key-tile_"]{padding:16px 18px !important}
+[class*="st-key-tile_"]:hover,[data-testid="stExpander"]:hover{border-color:#01D298 !important;
+  box-shadow:0 1px 2px rgba(15,23,42,.04),0 10px 28px rgba(1,210,152,.16) !important}
 [data-testid="stExpander"] details{border:0 !important}
-[data-testid="stHeading"] h1,[data-testid="stHeading"] h2,[data-testid="stHeading"] h3{color:#06382c !important}
-[data-testid="stCaptionContainer"]{color:#06382c !important}
-[class*="st-key-tile_"] [data-testid="stHeading"] h3,[class*="st-key-tile_"] [data-testid="stCaptionContainer"]{color:#0f172a !important}
+[data-testid="stHeading"] h1,[data-testid="stHeading"] h2,[data-testid="stHeading"] h3{color:#0F172A !important}
+[data-testid="stCaptionContainer"]{color:#475569 !important}
 """
 
 RINGKAS_CSS = """
-[data-testid="stVerticalBlock"]{gap:.7rem !important}
-.tile-title{font-weight:800;font-size:var(--fs-md);color:#0f172a;text-align:center;margin-bottom:2px}
-.tile-big{font-size:var(--fs-2xl);font-weight:800;color:#0f172a;text-align:center;line-height:1.2;margin-top:6px}
-.tile-big .npl{font-size:.8em;padding:2px 18px}
-.tile-sub{text-align:center;font-size:var(--fs-xs);color:#64748b;margin-top:2px}
+[data-testid="stVerticalBlock"]{gap:.8rem !important}
+.tile-title{font-weight:700;font-size:var(--fs-md);color:#475569;text-align:left;margin-bottom:6px;letter-spacing:-.005em}
+.tile-big{font-size:var(--fs-2xl);font-weight:800;color:#0F172A;text-align:left;line-height:1.2;margin-top:4px;letter-spacing:-.02em}
+.tile-big .npl{font-size:.8em;padding:2px 16px}
+.tile-sub{text-align:left;font-size:var(--fs-xs);color:#64748B;margin-top:4px}
 table.mini{width:100%;border-collapse:collapse;font-size:var(--fs-sm);margin-top:4px}
-table.mini th{text-align:left;color:#475569;font-weight:700;border-bottom:1px solid #cbd5e1;padding:4px 6px}
-table.mini td{padding:5px 6px;border-bottom:1px solid #f1f5f9;color:#0f172a}
+table.mini th{text-align:left;color:#64748B;font-weight:600;border-bottom:1px solid #E2E8F0;padding:6px 8px}
+table.mini td{padding:8px;border-bottom:1px solid #F1F5F9;color:#0F172A}
+table.mini tr:hover td{background:#F0FDF9}
 table.mini .num{text-align:right;white-space:nowrap}
-table.mini tr.total td{font-weight:800;border-top:1px solid #cbd5e1;border-bottom:0}
-.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px}
+table.mini tr.total td{font-weight:800;border-top:1px solid #CBD5E1;border-bottom:0;background:#F8FAFC}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:8px}
 """
 
 def _badge(p):
@@ -580,13 +583,13 @@ def _dashboard_ringkas(df):
            ("Outstanding / plafond", D.fmt_pct(outstanding / plafond * 100 if plafond else 0), "dari total plafond"),
            ("NPL (kol 3-5)", _badge(D.npl_pct(df)), f"batas sehat di bawah {NPL_BAD:g}%")]
     for i, (col, (t, v, sub)) in enumerate(zip(st.columns(5), kpi)):
-        with col, st.container(border=False, height=H_KPI, key=f"tile_kpi{i}"):
+        with col, st.container(border=False, key=f"tile_kpi{i}"):
             st.markdown(f'<div class="tile-title">{t}</div><div class="tile-big">{v}</div>'
                         f'<div class="tile-sub">{sub}</div>', unsafe_allow_html=True)
 
     # --- Baris 2: tren bulanan + ringkasan per segmen ---
     a, b = st.columns([2, 1.2])
-    with a, st.container(border=False, height=H_ROW, key="tile_tren"):
+    with a, st.container(border=False, key="tile_tren"):
         _tile_title("Tren pencairan bulanan (plafond)")
         d = df.dropna(subset=["TAHUN PENCAIRAN", "BULAN_PENCAIRAN"]).copy()
         if d.empty:
@@ -599,7 +602,7 @@ def _dashboard_ringkas(df):
             d["BULAN"] = d["_p"].map(label)
             _trend_chart(d, "BULAN", [label(p) for p in periods], "Plafond", segs, "Garis",
                          tickangle=-45, height=H_ROW - 54, tmargin=26)
-    with b, st.container(border=False, height=H_ROW, key="tile_segmen"):
+    with b, st.container(border=False, key="tile_segmen"):
         _tile_title("Ringkasan per segmen")
         rows = []
         for n in segs:
@@ -612,7 +615,7 @@ def _dashboard_ringkas(df):
 
     # --- Baris 3: 4 tile kecil ---
     c1, c2, c3, c4 = st.columns(4)
-    with c1, st.container(border=False, height=H_ROW, key="tile_mingguan"):
+    with c1, st.container(border=False, key="tile_mingguan"):
         _tile_title("Pencairan 7 hari terakhir (plafond)")
         w = df.dropna(subset=["TANGGAL_PENCAIRAN"])
         if w.empty:
@@ -623,20 +626,20 @@ def _dashboard_ringkas(df):
             v = w.groupby("_t")["PLAFOND"].sum().reindex(days).fillna(0)
             fig = go.Figure(go.Scatter(
                 x=days, y=v.values, mode="lines+markers+text", text=[ui.compact_rp(x) for x in v.values],
-                textposition="top center", textfont=dict(size=14), fill="tozeroy", fillcolor="rgba(147,197,253,.55)",
-                line=dict(color=BRAND, width=2.5, shape="spline"), marker=dict(size=7, color="#0f172a"),
+                textposition="top center", textfont=dict(size=14), fill="tozeroy", fillcolor="rgba(1,210,152,.18)",
+                line=dict(color=BRAND, width=2.5, shape="spline"), marker=dict(size=7, color="#FFFFFF", line=dict(color=BRAND, width=2)),
                 hovertemplate="%{x|%d %b %Y}<br>Rp %{y:,.0f}<extra></extra>"))
             fig.update_xaxes(tickformat="%d %b", tickmode="array", tickvals=days, tickangle=-45)
             fig.update_yaxes(visible=False, range=[0, max(v.max() * 1.3, 1)])
             ui.show_fig(ui.style_fig(fig, H_ROW - 54))
     ps = _product_stats(df)
-    with c2, st.container(border=False, height=H_ROW, key="tile_topproduk"):
+    with c2, st.container(border=False, key="tile_topproduk"):
         _tile_title("Top 5 produk (plafond)")
         top = ps.sort_values("plafond", ascending=False).head(5)
         st.markdown(_mini_table(["Produk", "Plafond", "NPL"], [
             [html.escape(str(r.GROUP_PRODUCT)), _rp(r.plafond), _badge(r.pct)] for r in top.itertuples()]),
             unsafe_allow_html=True)
-    with c3, st.container(border=False, height=H_ROW, key="tile_nplproduk"):
+    with c3, st.container(border=False, key="tile_nplproduk"):
         _tile_title("NPL tertinggi (produk)")
         if "IS_NPL" not in df.columns:
             st.info(f"Kolom {KOL_COLUMN} tidak ada di data.")
@@ -645,7 +648,7 @@ def _dashboard_ringkas(df):
             st.markdown(_mini_table(["Produk", "Outstanding", "NPL"], [
                 [html.escape(str(r.GROUP_PRODUCT)), _rp(r.outstanding), _badge(r.pct)] for r in risk.itertuples()]),
                 unsafe_allow_html=True)
-    with c4, st.container(border=False, height=H_ROW, key="tile_donut"):
+    with c4, st.container(border=False, key="tile_donut"):
         _tile_title("Outstanding per segmen")
         o = df.groupby("PRODUCT_OWNER", as_index=False)["OUTSTANDING"].sum()
         fig = px.pie(o, names="PRODUCT_OWNER", values="OUTSTANDING", hole=0.55, color="PRODUCT_OWNER",
@@ -653,8 +656,9 @@ def _dashboard_ringkas(df):
         fig.update_traces(textinfo="percent", textfont_size=14, sort=False,
                           hovertemplate="%{label}<br>Rp %{value:,.0f}<extra></extra>")
         ui.style_fig(fig, H_ROW - 54)
-        fig.update_layout(showlegend=True, legend=dict(orientation="h", yanchor="top", y=-0.02, xanchor="center",
-                                                       x=0.5, font=dict(size=14), title_text=""))
+        fig.update_layout(showlegend=True, margin=dict(l=8, r=8, t=8, b=64),
+                          legend=dict(orientation="h", yanchor="top", y=-0.04, xanchor="center",
+                                      x=0.5, font=dict(size=13), title_text=""))
         ui.show_fig(fig)
 
 
@@ -760,7 +764,7 @@ def page_dashboard():
         _tile_title("Plafond vs outstanding per segmen")
         fig = px.bar(long, x="PRODUCT_OWNER", y="Nilai", color="Jenis", barmode="group", text="Label",
                      category_orders={"PRODUCT_OWNER": list(pv["PRODUCT_OWNER"]), "Jenis": ["Plafond", "Outstanding"]},
-                     color_discrete_map={"Plafond": BRAND, "Outstanding": BRAND_LIGHT})
+                     color_discrete_map={"Plafond": BRAND, "Outstanding": BRAND_DEEP})
         fig.update_traces(textposition="outside", cliponaxis=False, textfont=dict(size=14),
                           hovertemplate="%{x}<br>%{fullData.name}: Rp %{y:,.0f}<extra></extra>")
         fig.update_layout(bargap=0.35, bargroupgap=0.08)

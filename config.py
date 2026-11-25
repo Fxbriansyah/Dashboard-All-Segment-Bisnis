@@ -2,8 +2,6 @@
 import os
 from pathlib import Path
 
-import plotly.express as px
-
 BASE_DIR = Path(__file__).parent
 CSS_PATH = BASE_DIR / "assets" / "style.css"
 
@@ -31,15 +29,17 @@ TEXT_COLUMNS = ["PRODUCT_OWNER", "GROUP_PRODUCT", "PLAN_CODE", "JENIS_FASILITAS"
 
 # Urutan & tema segmen. Segmen yang tidak terdaftar otomatis ditaruh di belakang.
 SEGMENT_ORDER = ["Retail & Micro Loan", "Supply Chain Financing", "Consumer", "SME Commercial"]
-SEGMENT_THEME = {
-    "Retail & Micro Loan":    {"icon": "👥", "color": "#2563eb", "bg": "#eff6ff", "border": "#bfdbfe"},
-    "Supply Chain Financing": {"icon": "🔗", "color": "#059669", "bg": "#ecfdf5", "border": "#a7f3d0"},
-    "Consumer":               {"icon": "🧑", "color": "#d97706", "bg": "#fffbeb", "border": "#fde68a"},
-    "SME Commercial":         {"icon": "💼", "color": "#7c3aed", "bg": "#f5f3ff", "border": "#ddd6fe"},
+SEGMENT_THEME = {   # color = warna grafik; ink = warna teks di atas latar tint (kontras lebih tinggi)
+    "Retail & Micro Loan":    {"icon": "👥", "color": "#01D298", "ink": "#047857", "bg": "#E6FBF4", "border": "#A7F0D9"},
+    "Supply Chain Financing": {"icon": "🔗", "color": "#0F766E", "ink": "#0F766E", "bg": "#E8F5F3", "border": "#B5DDD8"},
+    "Consumer":               {"icon": "🧑", "color": "#38BDF8", "ink": "#0369A1", "bg": "#EAF6FE", "border": "#BAE3FA"},
+    "SME Commercial":         {"icon": "💼", "color": "#1E3A8A", "ink": "#1E3A8A", "bg": "#EEF2FB", "border": "#C7D3F0"},
 }
-DEFAULT_THEME = {"icon": "📁", "color": "#334155", "bg": "#f8fafc", "border": "#e2e8f0"}
-PRODUCT_COLORS = px.colors.qualitative.Set2 + px.colors.qualitative.Pastel
-BRAND, BRAND_LIGHT = "#1d4ed8", "#93c5fd"
+DEFAULT_THEME = {"icon": "📁", "color": "#64748B", "ink": "#475569", "bg": "#F8FAFC", "border": "#E2E8F0"}
+# Palet produk: gradasi teal, zamrud, dan biru gelap khas Nobu Bank
+PRODUCT_COLORS = ["#01D298", "#0F766E", "#1E3A8A", "#34D399", "#38BDF8", "#047857", "#5EEAD4",
+                  "#2563EB", "#6EE7B7", "#155E75", "#94A3B8", "#A7F3D0"]
+BRAND, BRAND_LIGHT, BRAND_DEEP = "#01D298", "#A7F3DC", "#0B3B4F"
 
 BULAN_LABEL = {1: "Januari", 2: "Februari", 3: "Maret", 4: "April", 5: "Mei", 6: "Juni",
                7: "Juli", 8: "Agustus", 9: "September", 10: "Oktober", 11: "November", 12: "Desember"}
